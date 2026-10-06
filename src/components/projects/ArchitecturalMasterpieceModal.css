@@ -1,0 +1,450 @@
+/* ==========================================================================
+   ARCHITECTURAL MASTERPIECE 4K INSPECTION MODAL
+   ========================================================================== */
+
+.arch-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(4, 5, 8, 0.88);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(16px, 3vw, 40px);
+  animation: modal-bg-fade 0.35s var(--ease-expo);
+}
+
+@keyframes modal-bg-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.arch-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 1420px;
+  height: min(92vh, 900px);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-gold);
+  background: rgba(12, 14, 20, 0.95);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), var(--gold-glow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modal-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header */
+.arch-modal-header {
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  background: rgba(14, 17, 24, 0.8);
+}
+
+.arch-modal-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.arch-modal-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.arch-modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.arch-blueprint-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 169, 126, 0.12);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-light);
+  font-family: var(--font-serif);
+  font-size: 0.76rem;
+  letter-spacing: 0.1em;
+}
+
+.arch-modal-close-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-expo);
+}
+
+.arch-modal-close-btn:hover {
+  background: rgba(200, 169, 126, 0.2);
+  color: var(--text-primary);
+  border-color: var(--border-gold);
+  transform: rotate(90deg);
+}
+
+/* Modal Body */
+.arch-modal-body {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Viewport */
+.arch-modal-viewport {
+  position: relative;
+  background: #06070a;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.arch-modal-canvas-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.arch-modal-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1),
+              filter 0.5s ease;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Lighting filters in modal */
+.modal-light-day .arch-modal-img {
+  filter: brightness(1.08) contrast(1.02) saturate(1.04);
+}
+.modal-light-dusk .arch-modal-img {
+  filter: brightness(1.0) contrast(1.08) saturate(1.22) sepia(0.06);
+}
+.modal-light-night .arch-modal-img {
+  filter: brightness(0.82) contrast(1.3) saturate(0.92) hue-rotate(-10deg);
+}
+
+/* Blueprint CAD Grid Overlay */
+.arch-modal-cad-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.25) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mix-blend-mode: screen;
+}
+
+.arch-modal-canvas-frame.is-blueprint .arch-modal-cad-grid {
+  opacity: 1;
+}
+
+.arch-modal-canvas-frame.is-blueprint .arch-modal-img {
+  filter: contrast(1.5) grayscale(0.85) brightness(0.6) hue-rotate(185deg) !important;
+}
+
+.cad-axis-label {
+  position: absolute;
+  font-family: var(--font-serif);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: #00d4ff;
+  background: rgba(0, 20, 35, 0.8);
+  padding: 2px 6px;
+  border: 1px solid rgba(0, 212, 255, 0.4);
+}
+.cad-axis-x {
+  bottom: 24px;
+  left: 24px;
+}
+.cad-axis-y {
+  top: 24px;
+  left: 24px;
+}
+
+/* Floating Viewport Controls */
+.arch-viewport-controls {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(10, 12, 17, 0.85);
+  border: 1px solid var(--border-gold);
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  z-index: 10;
+}
+
+.arch-ctrl-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-inline-end: 10px;
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.arch-ctrl-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-smooth);
+  white-space: nowrap;
+}
+
+.arch-ctrl-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.arch-ctrl-btn.is-active {
+  background: rgba(200, 169, 126, 0.22);
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+  box-shadow: 0 0 12px rgba(200, 169, 126, 0.35);
+}
+
+.arch-zoom-hint {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  background: rgba(10, 12, 17, 0.75);
+  border: 1px solid var(--border-subtle);
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  opacity: 0.9;
+}
+
+/* Sidebar */
+.arch-modal-sidebar {
+  padding: 28px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  border-inline-start: 1px solid var(--border-subtle);
+  background: rgba(14, 16, 22, 0.9);
+}
+
+.arch-award-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-gold);
+  background: rgba(200, 169, 126, 0.08);
+}
+
+.arch-award-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--gold-light);
+}
+
+.arch-award-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+}
+
+.arch-spec-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arch-spec-title {
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  color: var(--gold-primary);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.arch-spec-desc {
+  font-size: 0.88rem;
+  color: #cfd2dc;
+  line-height: 1.8;
+  margin: 0;
+}
+
+/* Material Swatches */
+.arch-material-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.arch-swatch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: all 0.25s var(--ease-expo);
+}
+
+.arch-swatch-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-primary);
+}
+
+.arch-swatch-item:hover,
+.arch-swatch-item.is-selected {
+  border-color: var(--gold-primary);
+  background: rgba(200, 169, 126, 0.18);
+  color: var(--gold-light);
+}
+
+.arch-swatch-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--gold-light);
+  line-height: 1.6;
+  margin-top: 4px;
+}
+
+/* HUD Grid */
+.arch-hud-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+  background: rgba(8, 9, 12, 0.6);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.arch-hud-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.arch-hud-label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.arch-hud-val {
+  font-size: 0.86rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Credits */
+.arch-credits-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.arch-credit strong {
+  color: var(--gold-light);
+  margin-inline-start: 4px;
+}
+
+/* VIP CTA */
+.arch-modal-cta {
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+.arch-vip-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  .arch-modal-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: 50vh 1fr;
+    overflow-y: auto;
+  }
+  .arch-modal-sidebar {
+    border-inline-start: none;
+    border-top: 1px solid var(--border-subtle);
+  }
+  .arch-modal-container {
+    height: 95vh;
+  }
+}

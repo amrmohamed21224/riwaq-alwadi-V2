@@ -1,0 +1,335 @@
+/* ==========================================================================
+   ARCHITECTURAL PROJECT CARD (3D Parallax & Physics Tilt)
+   ========================================================================== */
+
+.arch-card-wrap {
+  perspective: 1200px;
+  width: 100%;
+  display: flex;
+}
+
+.arch-card-inner {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  background: rgba(14, 17, 24, 0.75);
+  backdrop-filter: blur(14px);
+  transform-style: preserve-3d;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.3s var(--ease-expo),
+              border-color 0.3s var(--ease-expo);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.arch-card-wrap:hover .arch-card-inner {
+  border-color: var(--border-gold);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85),
+              0 0 35px rgba(200, 169, 126, 0.18);
+}
+
+/* Specular Light Glare */
+.arch-card-glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  mix-blend-mode: overlay;
+  transition: opacity 0.3s;
+}
+
+/* Media Box */
+.arch-media-box {
+  position: relative;
+  width: 100%;
+  height: 290px;
+  overflow: hidden;
+  background: #090a0d;
+}
+
+.arch-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.5s ease;
+  display: block;
+}
+
+.arch-card-wrap:hover .arch-img {
+  transform: scale(1.06);
+}
+
+/* Atmospheric Lighting Filters */
+.lighting-day .arch-img {
+  filter: brightness(1.08) contrast(1.02) saturate(1.02);
+}
+
+.lighting-dusk .arch-img {
+  filter: brightness(1.0) contrast(1.08) saturate(1.22) sepia(0.06);
+}
+
+.lighting-night .arch-img {
+  filter: brightness(0.82) contrast(1.28) saturate(0.92) hue-rotate(-10deg);
+}
+
+/* Blueprint CAD Overlay */
+.arch-cad-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.22) 1px, transparent 1px);
+  background-size: 24px 24px;
+  mix-blend-mode: screen;
+}
+
+.arch-media-box.is-blueprint .arch-cad-grid {
+  opacity: 1;
+}
+
+.arch-media-box.is-blueprint .arch-img {
+  filter: contrast(1.4) grayscale(0.8) brightness(0.65) hue-rotate(180deg) !important;
+}
+
+/* Lighting Atmosphere Controller */
+.arch-lighting-ctrl {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  border-radius: var(--radius-full);
+  background: rgba(10, 12, 17, 0.78);
+  border: 1px solid var(--border-subtle);
+  backdrop-filter: blur(10px);
+  transform: translateZ(35px);
+}
+
+.arch-light-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.arch-light-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.arch-light-btn.is-active {
+  color: var(--gold-light);
+  background: rgba(200, 169, 126, 0.28);
+  box-shadow: 0 0 10px rgba(200, 169, 126, 0.4);
+}
+
+.arch-light-div {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 2px;
+}
+
+/* Floating Award Badge */
+.arch-card-badge-row {
+  position: absolute;
+  top: 14px;
+  inset-inline-end: 14px;
+  z-index: 6;
+  transform: translateZ(40px);
+}
+
+.arch-award-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(10, 12, 17, 0.85);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-light);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+/* Inspect 4K Masterpiece CTA */
+.arch-inspect-cta {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px) translateZ(45px);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: var(--radius-full);
+  background: rgba(10, 12, 17, 0.92);
+  border: 1px solid var(--gold-primary);
+  color: var(--gold-light);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), var(--gold-glow);
+  cursor: pointer;
+  transition: all 0.35s var(--ease-expo);
+  z-index: 7;
+  white-space: nowrap;
+}
+
+.arch-card-wrap:hover .arch-inspect-cta {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) translateZ(45px);
+}
+
+.arch-inspect-cta:hover {
+  background: var(--gold-primary);
+  color: #0b0c10;
+  box-shadow: 0 10px 30px rgba(200, 169, 126, 0.5);
+}
+
+/* Content Box */
+.arch-content-box {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  transform: translateZ(25px);
+}
+
+.arch-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.arch-location {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--gold-primary);
+}
+
+.arch-area,
+.arch-year {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.72rem;
+}
+
+.arch-title {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: color 0.25s;
+}
+
+.arch-title:hover {
+  color: var(--gold-light);
+}
+
+.arch-concept {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Materials Row */
+.arch-materials-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.arch-mat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.arch-mat-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.arch-mat-tag {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 169, 126, 0.1);
+  border: 1px solid var(--border-gold);
+  color: var(--gold-light);
+}
+
+/* Card Footer */
+.arch-card-foot {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.arch-foot-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--gold-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s;
+  padding: 0;
+}
+
+.arch-foot-link:hover {
+  color: var(--gold-light);
+  transform: translateX(4px);
+}
+[dir='rtl'] .arch-foot-link:hover {
+  transform: translateX(-4px);
+}
+
+.arch-photo-credit {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}

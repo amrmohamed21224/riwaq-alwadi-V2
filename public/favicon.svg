@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <rect width="100" height="100" rx="20" fill="#090A0D"/>
+  <!-- Architectural Portal / Arch Motif -->
+  <path d="M50 18 C32 18, 22 34, 22 55 L22 82 L34 82 L34 56 C34 42, 41 30, 50 30 C59 30, 66 42, 66 56 L66 82 L78 82 L78 55 C78 34, 68 18, 50 18 Z" fill="url(#goldGrad)" />
+  <circle cx="50" cy="50" r="4" fill="#C8A97E" />
+  <line x1="20" y1="84" x2="80" y2="84" stroke="#C8A97E" stroke-width="2" stroke-linecap="round" />
+  <defs>
+    <linearGradient id="goldGrad" x1="22" y1="18" x2="78" y2="82" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#E5D0A1" />
+      <stop offset="0.5" stop-color="#C8A97E" />
+      <stop offset="1" stop-color="#9E7A4A" />
+    </linearGradient>
+  </defs>
+</svg>
