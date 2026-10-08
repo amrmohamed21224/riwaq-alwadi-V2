@@ -325,7 +325,16 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
       };
     },
     setVisible(v) {
+      if (visible === v) return;
       visible = v;
+      if (v) {
+        lastT = performance.now();
+        if (running) {
+          try {
+            composer.render(0.016);
+          } catch (e) {}
+        }
+      }
     },
     resize() {
       const w = window.innerWidth;

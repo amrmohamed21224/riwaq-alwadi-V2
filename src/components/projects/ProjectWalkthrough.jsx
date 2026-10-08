@@ -1,8 +1,21 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Volume2, VolumeX, ChevronDown, Info, Layers, Eye, ArrowUpRight, Award, Compass, MousePointer2 } from 'lucide-react';
+import {
+  X,
+  Volume2,
+  VolumeX,
+  ChevronDown,
+  Info,
+  Layers,
+  Eye,
+  ArrowUpRight,
+  Award,
+  Compass,
+  MousePointer2,
+} from 'lucide-react';
 import { createEngine } from '../../walkthrough/engine';
 import { createAmbience } from '../../walkthrough/ambience';
+import ProjectProfileDetail from './ProjectProfileDetail';
 import './ProjectWalkthrough.css';
 
 const LOADERS = {
@@ -21,6 +34,7 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   const rootRef = useRef(null);
   const canvasRef = useRef(null);
   const scrollerRef = useRef(null);
+  const trackRef = useRef(null);
   const engineRef = useRef(null);
   const audioRef = useRef(null);
   const hotRefs = useRef({});
@@ -38,6 +52,7 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   const [showSpecs, setShowSpecs] = useState(false);
   const [sound, setSound] = useState(false);
   const [started, setStarted] = useState(false);
+  const [isPastWalkthrough, setIsPastWalkthrough] = useState(false);
 
   /* lock page scroll while open + Esc to close */
   useEffect(() => {
@@ -140,16 +155,46 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
     };
   }, [project.id]);
 
-  /* scroll -> camera progress */
+  /* scroll -> camera progress mapped to 3D track */
   useEffect(() => {
     if (!ready) return undefined;
     const sc = scrollerRef.current;
+    const track = trackRef.current;
+    let wasPast = false;
+
     const onScroll = () => {
-      const max = sc.scrollHeight - sc.clientHeight;
-      const p = max > 0 ? sc.scrollTop / max : 0;
-      engineRef.current && engineRef.current.setProgress(p);
+      if (!sc) return;
+      const trackDistance = track ? track.offsetHeight - window.innerHeight : window.innerHeight * 5;
+      const effectiveDist = Math.max(trackDistance, 1);
+      const rawProgress = sc.scrollTop / effectiveDist;
+      const p = clamp(rawProgress, 0, 1);
+
+      // Determine whether user has entered the dedicated profile section
+      const past = sc.scrollTop >= effectiveDist - 30;
+      setIsPastWalkthrough(past);
+
+      // CRITICAL PERFORMANCE: Pause 3D WebGL engine when in profile mode to free 100% GPU/CPU
+      if (engineRef.current) {
+        if (past && !wasPast) {
+          wasPast = true;
+          engineRef.current.setVisible(false);
+        } else if (!past && wasPast) {
+          wasPast = false;
+          engineRef.current.setVisible(true);
+        }
+
+        // Only compute 3D camera progression when actively in 3D walkthrough
+        if (!past) {
+          engineRef.current.setProgress(p);
+        }
+      }
+
+      if (pctRef.current) pctRef.current.textContent = String(Math.round(p * 100)).padStart(2, '0');
+      if (railRef.current) railRef.current.style.height = `${p * 100}%`;
+
       if (p > 0.012) setStarted(true);
     };
+
     onScroll();
     sc.addEventListener('scroll', onScroll, { passive: true });
     return () => sc.removeEventListener('scroll', onScroll);
@@ -166,9 +211,52 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   };
 
   const goTo = (p) => {
+    if (engineRef.current) {
+      engineRef.current.setVisible(true);
+    }
+    setIsPastWalkthrough(false);
     const sc = scrollerRef.current;
+    const track = trackRef.current;
     if (!sc) return;
-    sc.scrollTo({ top: p * (sc.scrollHeight - sc.clientHeight), behavior: 'smooth' });
+    const trackDistance = track ? track.offsetHeight - window.innerHeight : window.innerHeight * 5;
+    sc.scrollTo({ top: p * trackDistance, behavior: 'smooth' });
+  };
+
+  const scrollToTop = () => {
+    if (engineRef.current) {
+      engineRef.current.setVisible(true);
+      engineRef.current.setProgress(0);
+    }
+    setIsPastWalkthrough(false);
+    scrollerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToProfile = () => {
+    const el = document.getElementById('project-profile-root');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      const trackDistance = trackRef.current ? trackRef.current.offsetHeight - window.innerHeight : window.innerHeight * 5;
+      scrollerRef.current?.scrollTo({ top: trackDistance + 20, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToBlueprint = () => {
+    const el = document.getElementById('wt-blueprint');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      scrollToProfile();
+    }
+  };
+
+  const scrollToSpecs = () => {
+    const el = document.getElementById('wt-specs');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      scrollToProfile();
+    }
   };
 
   const toggleSound = () => {
@@ -186,22 +274,57 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   const title = isAr ? project.titleAr : project.titleEn;
   const chapters = def?.chapters || [];
   const ch = chapters[chapterIdx];
-  const isLast = chapterIdx === chapters.length - 1 && chapters.length > 0;
 
   return (
-    <div ref={rootRef} className="wt-root" dir={isAr ? 'rtl' : 'ltr'} onPointerMove={onPointerMove} onWheel={onWheel} role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      ref={rootRef}
+      className={`wt-root ${isPastWalkthrough ? 'is-in-profile' : ''}`}
+      dir={isAr ? 'rtl' : 'ltr'}
+      onPointerMove={onPointerMove}
+      onWheel={onWheel}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      {/* 3D Canvas fixed in background */}
       <canvas ref={canvasRef} className="wt-canvas" />
 
-      {/* invisible scroll driver */}
+      {/* Film vignette overlay */}
+      <div className={`wt-vignette ${isPastWalkthrough ? 'is-faded' : ''}`} aria-hidden="true" />
+
+      {/* Main Single Continuous Scroller */}
       <div ref={scrollerRef} className={`wt-scroller ${ready ? '' : 'is-locked'}`} tabIndex={0}>
-        <div className="wt-track" style={{ height: `${def?.scroll || 800}vh` }} />
+        {/* 1. The 3D Walkthrough Height Track */}
+        <div ref={trackRef} className="wt-track" style={{ height: `${def?.scroll || 600}vh` }}>
+          {/* Scroll Down Transition Prompt when reaching bottom of 3D scene */}
+          <div className="wt-track-transition-cue">
+            <span className="gold-tag gold-tag-pulse">
+              <Compass size={14} />
+              {isAr ? 'المخطط الهندسي التنفيذي CAD' : 'Executive CAD Blueprints'}
+            </span>
+            <p>{isAr ? 'تابع التمرير للأسفل لاستكشاف المخططات وملف المشروع الشامل' : 'Continue scrolling down to explore CAD Blueprints & Project Portfolio'}</p>
+            <ChevronDown size={22} className="wt-bounce" />
+          </div>
+        </div>
+
+        {/* Cinematic Curtain Divider Isolating 3D World From 2D Profile */}
+        <div className="wt-profile-entry-curtain" aria-hidden="true">
+          <div className="wt-curtain-glow-line" />
+        </div>
+
+        {/* 2. Seamless Dedicated Project Monograph & CAD Blueprint Section */}
+        {ready && (
+          <ProjectProfileDetail
+            project={project}
+            lang={lang}
+            onBackToTop={scrollToTop}
+            onClose={onClose}
+          />
+        )}
       </div>
 
-      {/* film vignette */}
-      <div className="wt-vignette" aria-hidden="true" />
-
-      {/* hotspots */}
-      {ready &&
+      {/* 3D Scene Interactive Hotspots (faded out in profile) */}
+      {ready && !isPastWalkthrough &&
         def?.hotspots?.map((h) => (
           <div key={h.id} ref={(el) => (hotRefs.current[h.id] = el)} className="wt-hotspot" style={{ opacity: 0 }}>
             <button className="wt-pin" onClick={() => setOpenSpot(openSpot === h.id ? null : h.id)} aria-label={isAr ? h.tagAr : h.tagEn}>
@@ -220,135 +343,112 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
           </div>
         ))}
 
-      {/* HUD */}
+      {/* Persistent Ultra-Luxury Top Navigation Bar */}
       {ready && (
-        <>
-          <header className="wt-topbar">
-            <div className="wt-brand">
-              <span className="wt-brand-code">{project.blueprintCode}</span>
-              <strong>{title}</strong>
-            </div>
-            <div className="wt-actions">
-              <button className={`wt-pill ${sound ? 'is-on' : ''}`} onClick={toggleSound} title={isAr ? 'الأجواء الصوتية' : 'Soundscape'}>
-                {sound ? <Volume2 size={15} /> : <VolumeX size={15} />}
-                <span>{sound ? (isAr ? 'الصوت: نشط' : 'Sound ON') : isAr ? 'الأجواء' : 'Atmosphere'}</span>
-              </button>
-              <button className={`wt-pill ${showSpecs ? 'is-on' : ''}`} onClick={() => setShowSpecs((s) => !s)}>
-                <Layers size={15} />
-                <span>{isAr ? 'ملف المشروع' : 'Project File'}</span>
-              </button>
-              <button className="wt-close" onClick={onClose} aria-label={isAr ? 'العودة للمشاريع' : 'Back to projects'}>
-                <X size={18} />
-                <span>{isAr ? 'عودة للمشاريع' : 'Back to projects'}</span>
-              </button>
-            </div>
-          </header>
-
-          {/* opening title splash */}
-          <div className={`wt-splash ${started ? 'is-gone' : ''}`}>
-            <span className="wt-tag">
-              <Compass size={13} /> {isAr ? project.categoryAr : project.categoryEn}
-            </span>
-            <h1>{title}</h1>
-            <p>
-              {isAr ? project.locationAr : project.locationEn} · {project.area} · {project.year}
-            </p>
-            <div className="wt-scroll-cue">
-              <MousePointer2 size={16} />
-              <span>{isAr ? 'مرّر لتدخل المشروع وتتجول بداخله' : 'Scroll to step inside and explore'}</span>
-              <ChevronDown size={16} className="wt-bounce" />
-            </div>
+        <header className="wt-topbar">
+          <div className="wt-brand" onClick={scrollToTop} role="button" tabIndex={0} title={isAr ? 'العودة لبداية الجولة' : 'Scroll to top'}>
+            <span className="wt-brand-code">{project.blueprintCode}</span>
+            <strong>{title}</strong>
           </div>
-
-          {/* chapter card */}
-          {chapters.map((c, i) => (
-            <article key={c.id} className={`wt-chapter ${i === chapterIdx && started && !c.hero ? 'is-active' : ''}`} aria-live="polite">
-              <span className="wt-chapter-badge">
-                {c.no} — {isAr ? c.nameAr : c.nameEn}
-              </span>
-              <h2>{isAr ? c.titleAr : c.titleEn}</h2>
-              <i className="wt-div" />
-              <p>{isAr ? c.textAr : c.textEn}</p>
-              {c.end && (
-                <div className="wt-chapter-cta">
-                  <button className="btn-primary" onClick={onClose}>
-                    <span>{isAr ? 'العودة لمعرض المشاريع' : 'Return to Projects'}</span>
-                    <ArrowUpRight size={17} />
-                  </button>
-                  <Link to="/contact" className="btn-secondary" onClick={onClose}>
-                    <span>{isAr ? 'اطلب مشروعاً مماثلاً' : 'Commission Similar'}</span>
-                  </Link>
-                </div>
-              )}
-            </article>
-          ))}
-
-          {/* dock */}
-          <nav className="wt-dock" aria-label="rooms">
-            <span className="wt-dock-label">
-              <Eye size={13} /> {isAr ? 'محطات الجولة' : 'Tour stops'}
-            </span>
-            <div className="wt-dock-items">
-              {chapters
-                .filter((c) => !c.hero)
-                .map((c) => (
-                  <button key={c.id} className={`wt-dock-btn ${ch?.id === c.id ? 'is-active' : ''}`} onClick={() => goTo(c.target)}>
-                    <i />
-                    <span>{isAr ? c.nameAr : c.nameEn}</span>
-                  </button>
-                ))}
-            </div>
-          </nav>
-
-          {/* progress rail */}
-          <div className="wt-rail" aria-hidden="true">
-            <div className="wt-rail-track">
-              <div ref={railRef} className="wt-rail-fill" />
-            </div>
-            <span className="wt-rail-num">
-              <b ref={pctRef}>00</b>%
-            </span>
-          </div>
-
-          {/* specs drawer */}
-          <aside className={`wt-specs ${showSpecs ? 'is-open' : ''}`}>
-            <button className="wt-spot-x" onClick={() => setShowSpecs(false)} aria-label="close">
-              <X size={15} />
+          <div className="wt-actions">
+            <button className={`wt-pill ${!isPastWalkthrough ? 'is-active-tab' : ''}`} onClick={scrollToTop} title={isAr ? 'الجولة ثلاثية الأبعاد' : '3D Walkthrough'}>
+              <Eye size={15} />
+              <span>{isAr ? 'الجولة 3D' : '3D Tour'}</span>
             </button>
-            <span className="wt-tag">
-              <Award size={12} /> {isAr ? project.awardAr : project.awardEn}
-            </span>
-            <h3>{title}</h3>
-            <p className="wt-specs-concept">{isAr ? project.conceptAr : project.conceptEn}</p>
-            <dl>
-              <div>
-                <dt>{isAr ? 'الموقع' : 'Location'}</dt>
-                <dd>{isAr ? project.locationAr : project.locationEn}</dd>
-              </div>
-              <div>
-                <dt>{isAr ? 'المساحة' : 'Area'}</dt>
-                <dd>{project.area}</dd>
-              </div>
-              <div>
-                <dt>{isAr ? 'سنة الإنجاز' : 'Year'}</dt>
-                <dd>{project.year}</dd>
-              </div>
-              <div>
-                <dt>{isAr ? 'كبير المعماريين' : 'Lead Architect'}</dt>
-                <dd>{isAr ? project.leadArchitectAr : project.leadArchitectEn}</dd>
-              </div>
-            </dl>
-            <h4>{isAr ? 'لوحة الخامات' : 'Material Palette'}</h4>
-            <ul>
-              {project.materials?.map((m) => (
-                <li key={m}>{m}</li>
-              ))}
-            </ul>
-          </aside>
-        </>
+            <button className="wt-pill" onClick={scrollToBlueprint} title={isAr ? 'المخطط الهندسي CAD' : 'CAD Blueprint'}>
+              <Compass size={15} />
+              <span>{isAr ? 'المخطط CAD' : 'CAD Blueprint'}</span>
+            </button>
+            <button className="wt-pill" onClick={scrollToSpecs} title={isAr ? 'المواصفات الفنية' : 'Specifications'}>
+              <Layers size={15} />
+              <span>{isAr ? 'المواصفات' : 'Specs'}</span>
+            </button>
+            <button className={`wt-pill ${sound ? 'is-on' : ''}`} onClick={toggleSound} title={isAr ? 'الأجواء الصوتية' : 'Soundscape'}>
+              {sound ? <Volume2 size={15} /> : <VolumeX size={15} />}
+              <span>{sound ? (isAr ? 'الصوت: نشط' : 'Sound ON') : isAr ? 'الأجواء' : 'Atmosphere'}</span>
+            </button>
+            <button className="wt-close" onClick={onClose} aria-label={isAr ? 'العودة للمشاريع' : 'Back to projects'}>
+              <X size={18} />
+              <span>{isAr ? 'عودة للمشاريع' : 'Back to projects'}</span>
+            </button>
+          </div>
+        </header>
       )}
 
-      {/* loader */}
+      {/* Opening Title Splash (only in initial 3D entry) */}
+      {ready && !isPastWalkthrough && (
+        <div className={`wt-splash ${started ? 'is-gone' : ''}`}>
+          <span className="wt-tag">
+            <Compass size={13} /> {isAr ? project.categoryAr : project.categoryEn}
+          </span>
+          <h1>{title}</h1>
+          <p>
+            {isAr ? project.locationAr : project.locationEn} · {project.area} · {project.year}
+          </p>
+          <div className="wt-scroll-cue">
+            <MousePointer2 size={16} />
+            <span>{isAr ? 'مرّر لتدخل المشروع وتتجول بداخله' : 'Scroll to step inside and explore'}</span>
+            <ChevronDown size={16} className="wt-bounce" />
+          </div>
+        </div>
+      )}
+
+      {/* Chapter Cards during 3D walkthrough */}
+      {ready && !isPastWalkthrough && chapters.map((c, i) => (
+        <article key={c.id} className={`wt-chapter ${i === chapterIdx && started && !c.hero ? 'is-active' : ''}`} aria-live="polite">
+          <span className="wt-chapter-badge">
+            {c.no} — {isAr ? c.nameAr : c.nameEn}
+          </span>
+          <h2>{isAr ? c.titleAr : c.titleEn}</h2>
+          <i className="wt-div" />
+          <p>{isAr ? c.textAr : c.textEn}</p>
+          {c.end && (
+            <div className="wt-chapter-cta">
+              <button className="btn-primary" onClick={scrollToProfile}>
+                <span>{isAr ? 'استكشف المخططات الهندسية وملف المشروع بالكامل' : 'Explore CAD Blueprints & Project Portfolio'}</span>
+                <ChevronDown size={17} className="wt-bounce" />
+              </button>
+              <button className="btn-secondary" onClick={onClose}>
+                <span>{isAr ? 'العودة للمعرض' : 'Return to Gallery'}</span>
+                <ArrowUpRight size={16} />
+              </button>
+            </div>
+          )}
+        </article>
+      ))}
+
+      {/* Tour Stops Dock during 3D scene */}
+      {ready && !isPastWalkthrough && (
+        <nav className="wt-dock" aria-label="rooms">
+          <span className="wt-dock-label">
+            <Eye size={13} /> {isAr ? 'محطات الجولة' : 'Tour stops'}
+          </span>
+          <div className="wt-dock-items">
+            {chapters
+              .filter((c) => !c.hero)
+              .map((c) => (
+                <button key={c.id} className={`wt-dock-btn ${ch?.id === c.id ? 'is-active' : ''}`} onClick={() => goTo(c.target)}>
+                  <i />
+                  <span>{isAr ? c.nameAr : c.nameEn}</span>
+                </button>
+              ))}
+          </div>
+        </nav>
+      )}
+
+      {/* Progress Rail during 3D scene */}
+      {ready && !isPastWalkthrough && (
+        <div className="wt-rail" aria-hidden="true">
+          <div className="wt-rail-track">
+            <div ref={railRef} className="wt-rail-fill" />
+          </div>
+          <span className="wt-rail-num">
+            <b ref={pctRef}>00</b>%
+          </span>
+        </div>
+      )}
+
+      {/* Loader */}
       {!ready && !error && (
         <div className="wt-loader">
           <img src={project.image} alt="" aria-hidden="true" />
@@ -366,6 +466,7 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
         </div>
       )}
 
+      {/* WebGL Error */}
       {error && (
         <div className="wt-loader">
           <img src={project.image} alt="" aria-hidden="true" />

@@ -30,9 +30,11 @@
   --border-gold-hover: rgba(200, 169, 126, 0.65);
 
   /* Typography */
-  --font-ar: 'Alexandria', 'Cairo', -apple-system, sans-serif;
-  --font-display: 'Syne', 'Alexandria', sans-serif;
-  --font-serif: 'Cinzel', 'Cairo', serif;
+  --font-ar: 'Cairo', 'Alexandria', -apple-system, sans-serif;
+  --font-hero-ar: 'Amiri', 'Cairo', serif;
+  --font-hero-en: 'Cinzel', 'Marcellus', serif;
+  --font-display: 'Syne', 'Cairo', sans-serif;
+  --font-serif: 'Cinzel', 'Amiri', serif;
   --font-en: 'Plus Jakarta Sans', sans-serif;
 
   /* Spacing & Layout */

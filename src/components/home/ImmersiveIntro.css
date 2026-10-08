@@ -92,44 +92,171 @@
 }
 
 .hero-badge-wrap {
-  margin-bottom: clamp(10px, 1.6vh, 18px);
+  margin-bottom: clamp(12px, 1.8vh, 20px);
+  transform: translateY(calc(var(--hero-fade, 0) * -16px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.4));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity;
 }
 
-.hero-photomask-title {
+/* --------------------------------------------------------------------------
+   ARCHITECTURAL HERO TITLE BLOCK (Grand Prestige & Proportions)
+   -------------------------------------------------------------------------- */
+.hero-title-block {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(0.25rem, 0.8vw, 0.75rem);
-  font-family: var(--font-ar);
-  font-size: clamp(1.9rem, 4.2vw, 3.8rem);
-  font-weight: 800;
-  line-height: 1.25;
-  color: var(--text-primary);
-  margin-bottom: clamp(12px, 1.8vh, 20px);
-  text-shadow: 0 4px 28px rgba(0, 0, 0, 0.8);
-}
-
-html[dir="ltr"] .hero-photomask-title {
-  font-family: var(--font-display);
-  letter-spacing: -0.015em;
-  line-height: 1.16;
-}
-
-.hero-title-line {
-  display: block;
   width: 100%;
-  line-height: inherit;
+  max-width: 900px;
+  margin-bottom: clamp(14px, 2.2vh, 26px);
+  padding: clamp(6px, 1.2vw, 16px) clamp(12px, 2.5vw, 32px);
+}
+
+/* Subtle architectural atmospheric ambient glow behind the title */
+.hero-title-block::before {
+  content: '';
+  position: absolute;
+  inset: -10% -5%;
+  background: radial-gradient(ellipse at center, rgba(8, 10, 15, 0.55) 0%, rgba(8, 10, 15, 0) 75%);
+  border-radius: var(--radius-xl);
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(16px);
+}
+
+.hero-photomask-title {
+  margin: 0;
+  padding: 0;
+  line-height: 1;
 }
 
 .hero-title-main {
-  font-weight: 800;
-  letter-spacing: normal;
+  display: block;
+  font-family: var(--font-hero-ar, 'Amiri', 'Cairo', serif);
+  font-size: clamp(2.8rem, 6.2vw, 5.2rem);
+  font-weight: 700;
+  line-height: 1.18;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  text-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.7),
+    0 10px 35px rgba(0, 0, 0, 0.95),
+    0 0 50px rgba(200, 169, 126, 0.28);
+  transform: translateY(calc(var(--hero-fade, 0) * -34px)) scale(calc(1 + var(--hero-fade, 0) * 0.045));
+  filter: blur(calc(var(--hero-fade, 0) * 5px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.2));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity, filter;
 }
 
+html[dir="ltr"] .hero-title-main {
+  font-family: var(--font-hero-en, 'Cinzel', 'Marcellus', serif);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  font-size: clamp(2.3rem, 5vw, 4.4rem);
+  text-transform: uppercase;
+}
+
+/* Central Golden Architectural Ornament */
+.hero-title-ornament {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: min(340px, 80%);
+  margin: clamp(10px, 1.6vh, 18px) auto;
+  transform: scaleX(calc(max(0, 1 - var(--hero-fade, 0) * 1.6)));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.7));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity;
+}
+
+.ornament-line {
+  flex: 1;
+  height: 1px;
+}
+
+html[dir="rtl"] .ornament-line-left {
+  background: linear-gradient(to left, rgba(200, 169, 126, 0.85) 0%, rgba(200, 169, 126, 0.1) 80%, transparent 100%);
+}
+html[dir="rtl"] .ornament-line-right {
+  background: linear-gradient(to right, rgba(200, 169, 126, 0.85) 0%, rgba(200, 169, 126, 0.1) 80%, transparent 100%);
+}
+html[dir="ltr"] .ornament-line-left {
+  background: linear-gradient(to right, transparent 0%, rgba(200, 169, 126, 0.1) 20%, rgba(200, 169, 126, 0.85) 100%);
+}
+html[dir="ltr"] .ornament-line-right {
+  background: linear-gradient(to left, transparent 0%, rgba(200, 169, 126, 0.1) 20%, rgba(200, 169, 126, 0.85) 100%);
+}
+
+.ornament-diamond {
+  font-size: 0.65rem;
+  color: var(--gold-light);
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(200, 169, 126, 0.85));
+  animation: subtlePulse 3s ease-in-out infinite;
+}
+
+@keyframes subtlePulse {
+  0%, 100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.18);
+  }
+}
+
+/* Poetic Philosophy Subtitle */
 .hero-title-sub {
-  font-weight: 800;
-  letter-spacing: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ar, 'Cairo', sans-serif);
+  font-size: clamp(1.1rem, 2.1vw, 1.8rem);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  margin: 0;
+  transform: translateY(calc(var(--hero-fade, 0) * 20px));
+  filter: blur(calc(var(--hero-fade, 0) * 4px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.2));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity, filter;
+}
+
+html[dir="ltr"] .hero-title-sub {
+  font-family: var(--font-en, 'Plus Jakarta Sans', sans-serif);
+  font-size: clamp(0.92rem, 1.5vw, 1.25rem);
+  letter-spacing: 0.22em;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.hero-sub-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(8px, 1.2vw, 16px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hero-sub-sep {
+  color: var(--gold-primary);
+  opacity: 0.65;
+  font-size: 1.1em;
+  transform: translateY(-1px);
+}
+
+.hero-sub-light {
+  color: #e4e7ee;
+  font-weight: 400;
+  letter-spacing: 0.03em;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.8);
 }
 
 .hero-photomask-sub {
@@ -140,6 +267,10 @@ html[dir="ltr"] .hero-photomask-title {
   margin-bottom: clamp(16px, 2.4vh, 26px);
   text-shadow: 0 2px 14px rgba(0, 0, 0, 0.85);
   font-weight: 300;
+  transform: translateY(calc(var(--hero-fade, 0) * 24px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.3));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity;
 }
 
 .hero-photomask-cta {
@@ -149,6 +280,10 @@ html[dir="ltr"] .hero-photomask-title {
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: clamp(16px, 2.2vh, 24px);
+  transform: translateY(calc(var(--hero-fade, 0) * 26px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.35));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity;
 }
 
 /* Coordinates Architectural Banner */
@@ -168,6 +303,10 @@ html[dir="ltr"] .hero-photomask-title {
   -webkit-backdrop-filter: blur(10px);
   margin-bottom: clamp(10px, 1.6vh, 18px);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  transform: translateY(calc(var(--hero-fade, 0) * 30px));
+  opacity: calc(max(0, 1 - var(--hero-fade, 0) * 1.4));
+  transition: transform 0.1s linear, opacity 0.1s linear;
+  will-change: transform, opacity;
 }
 
 .coord-lbl {
@@ -425,6 +564,13 @@ html[dir="ltr"] .hero-photomask-title {
   transform: translateX(-50%);
   z-index: 6;
   max-width: 95vw;
+  transition: opacity 0.5s var(--ease-expo), transform 0.5s var(--ease-expo);
+}
+
+.imm-dock-container.is-faded {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 25px);
 }
 
 .imm-dock {

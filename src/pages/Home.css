@@ -162,62 +162,201 @@
   50% { transform: translateY(5px); }
 }
 
-/* 2. Stats Ribbon */
+/* 2. Architectural Milestones & Stats */
 .stats-ribbon-section {
   position: relative;
-  z-index: 20;
-  margin-top: -3.5rem;
-  padding-bottom: 4rem;
+  z-index: 10;
+  margin-top: 0;
+  padding-top: clamp(4.5rem, 8vh, 7rem);
+  padding-bottom: clamp(4.5rem, 8vh, 6.5rem);
+  background: 
+    radial-gradient(ellipse at 50% 0%, rgba(200, 169, 126, 0.08) 0%, rgba(8, 9, 11, 0) 70%),
+    linear-gradient(to bottom, #08090d 0%, #0a0d13 50%, #08090b 100%);
+  border-top: 1px solid rgba(200, 169, 126, 0.16);
 }
 
-.stats-ribbon-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  padding: 2.5rem 2rem;
-  background: rgba(14, 16, 22, 0.88);
-  border: 1px solid var(--border-gold);
-}
-
-.stat-card {
+.stats-header {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 0.5rem 1rem;
+  max-width: 780px;
+  margin-inline: auto;
+  margin-bottom: clamp(2.5rem, 5vh, 4rem);
+}
+
+.stats-heading {
+  font-family: var(--font-hero-ar, var(--font-ar));
+  font-size: clamp(1.8rem, 3.2vw, 2.75rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.3;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.stats-lead {
+  font-size: clamp(0.92rem, 1.15vw, 1.05rem);
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* Cards Grid */
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: clamp(16px, 1.8vw, 24px);
+}
+
+.stat-arch-card {
   position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 2.4vw, 32px) clamp(20px, 2vw, 26px);
+  background: linear-gradient(155deg, rgba(16, 20, 28, 0.82) 0%, rgba(10, 12, 17, 0.94) 100%);
+  border: 1px solid rgba(200, 169, 126, 0.22);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.5);
+  transition: all 0.45s var(--ease-expo);
+  cursor: default;
 }
 
-.stat-card:not(:last-child)::after {
-  content: '';
+.stat-arch-card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(200, 169, 126, 0.65);
+  box-shadow: 
+    0 22px 50px rgba(0, 0, 0, 0.75),
+    0 0 35px rgba(200, 169, 126, 0.2);
+}
+
+/* Corner Architectural Accents */
+.arch-card-corner {
   position: absolute;
-  top: 15%;
-  left: 0;
-  width: 1px;
-  height: 70%;
-  background: var(--border-subtle);
+  width: 10px;
+  height: 10px;
+  border-color: rgba(200, 169, 126, 0.4);
+  border-style: solid;
+  pointer-events: none;
+  transition: all 0.35s var(--ease-expo);
 }
 
-[dir="ltr"] .stat-card:not(:last-child)::after {
-  left: auto;
-  right: 0;
+.arch-card-corner.top-left {
+  top: 10px;
+  inset-inline-start: 10px;
+  border-width: 1px 0 0 1px;
+}
+
+.arch-card-corner.bottom-right {
+  bottom: 10px;
+  inset-inline-end: 10px;
+  border-width: 0 1px 1px 0;
+}
+
+.stat-arch-card:hover .arch-card-corner {
+  width: 16px;
+  height: 16px;
+  border-color: var(--gold-light);
+}
+
+/* Card Top Bar */
+.stat-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: clamp(16px, 2vh, 22px);
+}
+
+.stat-icon-pod {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(200, 169, 126, 0.1);
+  border: 1px solid rgba(200, 169, 126, 0.28);
+  color: var(--gold-light);
+  transition: all 0.35s var(--ease-expo);
+}
+
+.stat-arch-card:hover .stat-icon-pod {
+  background: var(--gold-primary);
+  color: #08090b;
+  transform: scale(1.08) rotate(4deg);
+  box-shadow: 0 4px 18px rgba(200, 169, 126, 0.4);
+}
+
+.stat-badge-tag {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  color: var(--gold-light);
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(200, 169, 126, 0.08);
+  border: 1px solid rgba(200, 169, 126, 0.18);
+}
+
+/* Number & Text */
+.stat-number-wrap {
+  margin-bottom: 0.6rem;
 }
 
 .stat-number {
   font-family: var(--font-en);
-  font-size: clamp(2.2rem, 3.2vw, 3.2rem);
+  font-size: clamp(2.5rem, 3.8vw, 3.5rem);
   font-weight: 800;
-  color: var(--gold-light);
-  line-height: 1.1;
-  margin-bottom: 0.5rem;
-  background: var(--gold-gradient);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 0%, #faecd2 32%, #c8a97e 72%, #9a7848 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 12px rgba(200, 169, 126, 0.25));
+  display: inline-block;
 }
 
 .stat-label {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  font-weight: 400;
+  font-family: var(--font-ar);
+  font-size: clamp(1.02rem, 1.25vw, 1.15rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 0.5rem;
+  line-height: 1.45;
+}
+
+.stat-desc {
+  font-size: 0.82rem;
+  color: #9aa0af;
+  line-height: 1.6;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* Sweeping gold highlight on bottom border */
+.stat-card-glow-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--gold-gradient);
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: all 0.45s var(--ease-expo);
+}
+
+.stat-arch-card:hover .stat-card-glow-line {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 /* 3. Philosophy Section */
@@ -574,12 +713,9 @@
     grid-template-columns: 1fr;
     gap: 3rem;
   }
-  .stats-ribbon-grid {
+  .stats-cards-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 2rem;
-  }
-  .stat-card:not(:last-child)::after {
-    display: none;
+    gap: 1.25rem;
   }
 }
 
@@ -587,7 +723,7 @@
   .featured-projects-grid {
     grid-template-columns: 1fr;
   }
-  .stats-ribbon-grid {
+  .stats-cards-grid {
     grid-template-columns: 1fr;
   }
   .vip-cta-card {

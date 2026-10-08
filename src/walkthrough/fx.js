@@ -291,13 +291,24 @@ export function createLightShaft({
 /* =========================================================================
    Animated flame (fireplace strip / fire pit)
    ========================================================================= */
-export function createFlame({ width = 3, height = 0.5, planes = 1, freq = 5, c1 = 0xff5a10, c2 = 0xffd070, power = 2.2 } = {}) {
+export function createFlame({
+  width = 3,
+  height = 0.5,
+  planes = 1,
+  freq = 5,
+  c1 = 0xff5a10,
+  c2 = 0xffd070,
+  power = 2.2,
+  linear = false,
+  frontOnly = false,
+} = {}) {
   const group = new THREE.Group();
   const mat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    depthTest: true,
     blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
+    side: frontOnly ? THREE.FrontSide : THREE.DoubleSide,
     fog: false,
     uniforms: {
       time: { value: 0 },
@@ -329,8 +340,14 @@ export function createFlame({ width = 3, height = 0.5, planes = 1, freq = 5, c1 
   for (let i = 0; i < planes; i++) {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(width, height), mat);
     m.position.y = height / 2;
-    m.rotation.y = (i / planes) * Math.PI;
-    m.renderOrder = 6;
+    if (linear) {
+      // Parallel sheets stacked along Z (strictly parallel to wall, 0 rotation)
+      m.position.z = (i - (planes - 1) / 2) * 0.025;
+      m.rotation.y = 0;
+    } else {
+      m.rotation.y = (i / planes) * Math.PI;
+    }
+    m.renderOrder = 2;
     group.add(m);
   }
   group.userData.tick = (t) => {

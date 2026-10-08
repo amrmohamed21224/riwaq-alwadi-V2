@@ -108,6 +108,7 @@ export default function ImmersiveIntro({ lang }) {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [heroOpacity, setHeroOpacity] = useState(1);
   const [heroZoom, setHeroZoom] = useState(1);
+  const [heroFade, setHeroFade] = useState(0);
   const [activeHotspot, setActiveHotspot] = useState(null);
   const [visibleHotspots, setVisibleHotspots] = useState([]);
 
@@ -146,6 +147,8 @@ export default function ImmersiveIntro({ lang }) {
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(
@@ -161,24 +164,17 @@ export default function ImmersiveIntro({ lang }) {
     composer.addPass(new RenderPass(scene, camera));
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.35, // Subtle luxury bloom strength
-      0.45, // Soft radius
-      0.88, // Only glow brightest elements (fire, cove LEDs, brass)
+      0.32, // Refined luxury bloom strength
+      0.44, // Soft radius
+      0.88, // Only glow warmest emissive accents (fire, cove LEDs, brass)
     );
     composer.addPass(bloomPass);
     composer.addPass(new OutputPass());
 
-    // Headlight tracking camera
-    const headLight = new THREE.PointLight(0xffdfb5, 6, 8, 1.8);
-    scene.add(headLight);
-
     // Textures loader
     let villa = null;
     let disposed = false;
-    const manager = new THREE.LoadingManager(() => {
-      if (!disposed) setLoaded(true);
-    });
-    const loader = new THREE.TextureLoader(manager);
+    const loader = new THREE.TextureLoader();
     const projectTextures = [
       '/images/hero.jpg',
       '/images/blueprint.jpg',
@@ -263,8 +259,6 @@ export default function ImmersiveIntro({ lang }) {
       tempLookAt.y -= mouse.sy * 0.8;
       camera.lookAt(tempLookAt);
 
-      headLight.position.copy(camera.position);
-
       // Update animated elements
       villa.update(time);
       composer.render();
@@ -273,6 +267,7 @@ export default function ImmersiveIntro({ lang }) {
       const heroFadeProgress = clamp(currentProgress / 0.12, 0, 1);
       setHeroOpacity(1 - heroFadeProgress);
       setHeroZoom(1 + heroFadeProgress * 0.28);
+      setHeroFade(heroFadeProgress);
       setScrollProgress(Math.round(currentProgress * 100));
 
       // Calculate active chapter
@@ -339,6 +334,7 @@ export default function ImmersiveIntro({ lang }) {
             opacity: heroOpacity,
             pointerEvents: heroOpacity > 0.05 ? 'auto' : 'none',
             visibility: heroOpacity <= 0.01 ? 'hidden' : 'visible',
+            '--hero-fade': heroFade,
           }}
         >
           <img
@@ -360,23 +356,38 @@ export default function ImmersiveIntro({ lang }) {
               </span>
             </div>
 
-            <h1 className="hero-photomask-title">
-              {isAr ? (
-                <>
-                  <span className="hero-title-line hero-title-main">رِوَاق الوَادِي</span>
-                  <span className="hero-title-line hero-title-sub">
-                    <span className="gold-shimmer-text">صِيَاغَة الفَرَاغِ</span> وَالضَّوْء
+            {/* Architectural Hero Title & Philosophy */}
+            <div className="hero-title-block">
+              <h1 className="hero-photomask-title">
+                {isAr ? (
+                  <span className="hero-title-main">رواق الوادي</span>
+                ) : (
+                  <span className="hero-title-main">RIWAQ AL-WADI</span>
+                )}
+              </h1>
+
+              <div className="hero-title-ornament" aria-hidden="true">
+                <span className="ornament-line ornament-line-left" />
+                <span className="ornament-diamond">◆</span>
+                <span className="ornament-line ornament-line-right" />
+              </div>
+
+              <div className="hero-title-sub">
+                {isAr ? (
+                  <span className="hero-sub-inner">
+                    <span className="gold-shimmer-text">صِيَاغَة الفَرَاغِ</span>
+                    <span className="hero-sub-sep">·</span>
+                    <span className="hero-sub-light">وَالضَّوْء</span>
                   </span>
-                </>
-              ) : (
-                <>
-                  <span className="hero-title-line hero-title-main">RIWAQ AL-WADI</span>
-                  <span className="hero-title-line hero-title-sub">
-                    <span className="gold-shimmer-text">SCULPTING SPACE</span> &amp; LIGHT
+                ) : (
+                  <span className="hero-sub-inner">
+                    <span className="gold-shimmer-text">SCULPTING SPACE</span>
+                    <span className="hero-sub-sep">·</span>
+                    <span className="hero-sub-light">&amp; LIGHT</span>
                   </span>
-                </>
-              )}
-            </h1>
+                )}
+              </div>
+            </div>
 
             <p className="hero-photomask-sub">
               {isAr
@@ -463,7 +474,7 @@ export default function ImmersiveIntro({ lang }) {
         <div className="immersive-chapters-stage" aria-live="polite">
           {CHAPTERS.map((ch, idx) => {
             if (ch.isHero) return null;
-            const isCurrent = activeChapterIdx === idx && heroOpacity < 0.3;
+            const isCurrent = activeChapterIdx === idx && heroOpacity < 0.3 && scrollProgress < 97;
             return (
               <div
                 key={ch.id}
@@ -493,7 +504,7 @@ export default function ImmersiveIntro({ lang }) {
         </div>
 
         {/* Bottom Interactive Room Dock */}
-        <div className="imm-dock-container">
+        <div className={`imm-dock-container ${scrollProgress >= 97 ? 'is-faded' : ''}`}>
           <nav className="imm-dock glass-card" aria-label="Room navigation">
             <span className="imm-dock-label">
               <Eye size={13} />

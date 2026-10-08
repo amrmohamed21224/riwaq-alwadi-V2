@@ -6,6 +6,7 @@ import {
 } from '../data/projectsData';
 import ArchitecturalProjectCard from '../components/projects/ArchitecturalProjectCard';
 import ArchitecturalMasterpieceModal from '../components/projects/ArchitecturalMasterpieceModal';
+import ArchitecturalBlueprintModal from '../components/projects/ArchitecturalBlueprintModal';
 import {
   Camera,
   Play,
@@ -27,6 +28,7 @@ export default function Media({ lang }) {
   const [activeModalItem, setActiveModalItem] = useState(null);
   const [activeVideoModal, setActiveVideoModal] = useState(null);
   const [walkthroughProject, setWalkthroughProject] = useState(null);
+  const [blueprintModalProject, setBlueprintModalProject] = useState(null);
 
   const categories = [
     { id: 'all', nameAr: 'كافة الأعمال', nameEn: 'All Works' },
@@ -129,6 +131,7 @@ export default function Media({ lang }) {
                 project={item}
                 lang={lang}
                 onInspect={(proj) => setActiveModalItem(proj)}
+                onOpenBlueprint={(proj) => setBlueprintModalProject(proj)}
                 onEnter={(proj) => {
                   const resolved = FEATURED_PROJECTS.find((p) => p.id === (proj.projectId || proj.id)) || proj;
                   setWalkthroughProject(resolved);
@@ -247,6 +250,15 @@ export default function Media({ lang }) {
           </div>
         </div>
       )}
+      {/* Interactive CAD Architectural Blueprint Modal */}
+      {blueprintModalProject && (
+        <ArchitecturalBlueprintModal
+          project={blueprintModalProject}
+          lang={lang}
+          onClose={() => setBlueprintModalProject(null)}
+        />
+      )}
+
       {/* Immersive 3D project walkthrough */}
       {walkthroughProject && (
         <Suspense fallback={null}>

@@ -9,7 +9,11 @@ import { createContactShadow } from './fx';
  * real-world meters), shadow-aware primitives, furniture & vegetation props.
  */
 export function createKit(ctx) {
-  const { scene, disposables } = ctx;
+  const scene = ctx.scene;
+  const disposables = ctx.disposables || [];
+  if (!ctx.lights) ctx.lights = [];
+  if (!ctx.quality) ctx.quality = { shadows: true };
+  if (!ctx.registerFx) ctx.registerFx = () => {};
   const track = (o) => {
     disposables.push(o);
     return o;
@@ -55,8 +59,8 @@ export function createKit(ctx) {
     return track(m);
   }
 
-  const glow = (color, intensity = 2) =>
-    track(new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), toneMapped: false, fog: false }));
+  const glow = (color, intensity = 1.4, toneMapped = true) =>
+    track(new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(intensity), toneMapped, fog: false }));
 
   const glass = (o = {}) =>
     track(
@@ -366,15 +370,33 @@ export function createKit(ctx) {
     return v;
   }
 
-  function artFrame({ w, h, x, y, z, ry = 0, texture, color = 0x1a1a1a, frame, parent = scene, emissive = 0 }) {
+  function artFrame({ w, h, x, y, z, ry = 0, texture, color = 0x1a1a1a, frame, parent = scene, emissive = 0, plaque = true }) {
     const g = group(x, y, z, parent, ry);
-    box(w + 0.1, h + 0.1, 0.05, 0, 0, 0, frame, { parent: g });
+    // Shadow box backing panel
+    box(w + 0.16, h + 0.16, 0.05, 0, 0, 0, frame, { parent: g });
+    // Outer floating frame lips
+    box(w + 0.16, 0.04, 0.08, 0, h / 2 + 0.06, 0.02, frame, { parent: g });
+    box(w + 0.16, 0.04, 0.08, 0, -h / 2 - 0.06, 0.02, frame, { parent: g });
+    box(0.04, h + 0.08, 0.08, -w / 2 - 0.06, 0, 0.02, frame, { parent: g });
+    box(0.04, h + 0.08, 0.08, w / 2 + 0.06, 0, 0.02, frame, { parent: g });
+    // Artwork canvas recessed inside shadow box
     const m = texture
-      ? track(new THREE.MeshStandardMaterial({ map: texture, roughness: 0.6, emissive: new THREE.Color(0xffffff), emissiveMap: texture, emissiveIntensity: emissive }))
+      ? track(new THREE.MeshStandardMaterial({
+          map: texture,
+          roughness: 0.45,
+          metalness: 0.05,
+          emissive: new THREE.Color(0xfff2dc),
+          emissiveMap: texture,
+          emissiveIntensity: emissive,
+        }))
       : mat(null, { color, roughness: 0.6 });
     const p = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
-    p.position.z = 0.03;
+    p.position.z = 0.028;
     g.add(p);
+    // Museum identity brass plaque
+    if (plaque) {
+      box(Math.min(w * 0.4, 0.8), 0.1, 0.02, 0, -h / 2 - 0.22, 0.02, frame, { parent: g });
+    }
     return g;
   }
 

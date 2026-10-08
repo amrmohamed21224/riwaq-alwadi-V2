@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
-import { createMarbleTexture, createWoodTexture, createCanyonBackdrop } from './proceduralTextures';
+import { createKit } from '../../walkthrough/kit';
+import * as tex from '../../walkthrough/textures';
+import { createSkyDome, createWater, createFlame, createParticles } from '../../walkthrough/fx';
 
 /* ---------- Camera walkthrough path (scroll driven) ---------- */
 export const WALKTHROUGH_PATH = [
@@ -62,8 +63,8 @@ export const HOTSPOTS = [
     worldPos: [0, 0.3, 19],
     tagAr: 'بركة إنفينيتي عاكسة',
     tagEn: 'Reflective Infinity Pool',
-    descAr: 'مرآة مائية ممتدة تتلاشى في الأفق الجبلي مع أطراف نحاسية مذهبة',
-    descEn: 'Suspended water mirror blending with the canyon horizon & brass edges',
+    descAr: 'مرآة مائية ممتدة تتلاشى في الأفق الجبلي مع أطراف حجرية داكنة وأحجار عبور طافية',
+    descEn: 'Suspended water mirror blending with the canyon horizon & floating travertine stones',
   },
   {
     id: 'great_hall',
@@ -80,8 +81,8 @@ export const HOTSPOTS = [
     worldPos: [-14.4, 2.2, -9.5],
     tagAr: 'رواق المشاريع الملكية',
     tagEn: 'Signature Project Gallery',
-    descAr: 'متحف خاص يعرض مسيرة التخطيط والإنشاء لأيقوناتنا المعمارية',
-    descEn: 'Private curation presenting blueprints and executed landmark estates',
+    descAr: 'متحف خاص يعرض مسيرة التخطيط والإنشاء لأيقوناتنا المعمارية بإضاءة متحفية دقيقة',
+    descEn: 'Private curation presenting blueprints and executed landmark estates under museum spots',
   },
   {
     id: 'dining',
@@ -108,390 +109,404 @@ export function buildVilla(scene, projectTextures, renderer) {
   const disposables = [];
   const add = (o) => {
     scene.add(o);
+    disposables.push(o);
     return o;
   };
 
-  // Atmosphere & Fog (Deep midnight charcoal dusk)
-  scene.fog = new THREE.FogExp2(0x0a0b10, 0.007);
+  const kit = createKit({ scene, disposables });
 
-  // Generate procedural architectural textures
-  const marbleTex = createMarbleTexture();
-  const woodTex = createWoodTexture();
-  const canyonTex = createCanyonBackdrop();
-  disposables.push(marbleTex, woodTex, canyonTex);
+  // 1. Procedural PBR Physical Materials
+  const marbleTex = tex.marble({ base: 0x0f1115, vein: 0xd6b478, sharp: 14, scale: 3.5, polish: 0.12, tilesX: 2, tilesY: 2 });
+  const concTex = tex.concrete({ base: 0xc8c3b8, panelsX: 4, panelsY: 2, seed: 15 });
+  const travTex = tex.travertine({ base: 0xd8caa8, bands: 36, tilesX: 3, tilesY: 2, polish: 0.35, seed: 14 });
+  const woodTex = tex.wood({ planks: 7, base: 0x4a3222, dark: 0x22140c, seed: 8, rough: 0.42 });
+  const stoneTex = tex.stoneBlocks({ rows: 5, cols: 3, base: 0xc8b594, mortar: 0x8a7758, seed: 6 });
+  const basaltTex = tex.stoneBlocks({ rows: 8, cols: 4, base: 0x181a20, mortar: 0x101115, groove: 0.002, rough: 0.75, seed: 4 });
+  const fabricTex = tex.fabric({ base: 0xdfd8ca, fiber: 90, seed: 2 });
+  const darkFabTex = tex.fabric({ base: 0x161616, fiber: 100, seed: 5 });
 
-  // Materials
-  const M = {
-    marbleFloor: new THREE.MeshStandardMaterial({
-      map: marbleTex,
-      roughness: 0.18,
-      metalness: 0.35,
-      color: 0x1f2229,
-    }),
-    stoneTerrace: new THREE.MeshStandardMaterial({
-      color: 0x22242a,
-      roughness: 0.85,
-      metalness: 0.1,
-    }),
-    darkWall: new THREE.MeshStandardMaterial({
-      color: 0x181a20,
-      roughness: 0.92,
-    }),
-    limestoneWall: new THREE.MeshStandardMaterial({
-      color: 0x2c2b29,
-      roughness: 0.95,
-    }),
-    walnutWood: new THREE.MeshStandardMaterial({
-      map: woodTex,
-      roughness: 0.45,
-      metalness: 0.1,
-      color: 0x5a3d28,
-    }),
-    darkWalnut: new THREE.MeshStandardMaterial({
-      map: woodTex,
-      roughness: 0.4,
-      metalness: 0.1,
-      color: 0x2a1c12,
-    }),
-    brushedBrass: new THREE.MeshStandardMaterial({
-      color: 0xc8a97e,
-      roughness: 0.28,
-      metalness: 0.88,
-    }),
-    fabricBoucle: new THREE.MeshStandardMaterial({
-      color: 0x3d3935,
-      roughness: 0.98,
-    }),
-    fabricDark: new THREE.MeshStandardMaterial({
-      color: 0x181716,
-      roughness: 0.98,
-    }),
-    glass: new THREE.MeshPhysicalMaterial({
-      color: 0x8aa8be,
-      roughness: 0.04,
-      metalness: 0.1,
-      transmission: 0.9,
-      transparent: true,
-      opacity: 0.22,
-      depthWrite: false,
-    }),
-    goldGlow: new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0xf6d79e).multiplyScalar(1.8),
-      toneMapped: false,
-    }),
-    coveWarm: new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0xffb866).multiplyScalar(1.2),
-      toneMapped: false,
-    }),
-    fireGlow: new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0xff6e1a).multiplyScalar(2.2),
-      toneMapped: false,
-    }),
-  };
-  Object.values(M).forEach((m) => disposables.push(m));
+  const mFloor = kit.mat(marbleTex, { roughness: 0.16, metalness: 0.35, clearcoat: 0.45, clearcoatRoughness: 0.08 });
+  const mTravertine = kit.mat(travTex, { roughness: 0.55, metalness: 0.04 });
+  const mConc = kit.mat(concTex, { roughness: 0.82, metalness: 0.05 });
+  const mStone = kit.mat(stoneTex, { roughness: 0.94 });
+  const mBasalt = kit.mat(basaltTex, { roughness: 0.65, metalness: 0.1 });
+  const mTerrace = kit.mat(stoneTex, { roughness: 0.88, color: 0x6e6659 });
+  const mWood = kit.mat(woodTex, { roughness: 0.38, metalness: 0.08 });
+  const mBrass = kit.mat(null, { color: 0xc4a474, metalness: 0.88, roughness: 0.28 });
+  const mDarkBronze = kit.mat(null, { color: 0x26221d, metalness: 0.85, roughness: 0.32 });
+  const mGlass = kit.glass({ opacity: 0.18, roughness: 0.02, color: 0xb5d0e0 });
+  const mFabBoucle = kit.mat(fabricTex, { roughness: 0.98 });
+  const mDarkFab = kit.mat(darkFabTex, { roughness: 0.98 });
 
-  const box = (w, h, d, x, y, z, mat, parent = scene) => {
-    const g = new THREE.BoxGeometry(w, h, d);
-    disposables.push(g);
-    const m = new THREE.Mesh(g, mat);
-    m.position.set(x, y, z);
-    parent.add(m);
-    return m;
-  };
+  // Warm architectural cove glow (Tone-mapped for soft natural bloom)
+  const mWarmCove = kit.glow(0xff9e48, 1.4, true);
+  const mStepGlow = kit.glow(0xffba6a, 1.1, true);
 
-  /* ---------- 1. Celestial Sky & Dusk Panorama ---------- */
-  // Curved Panoramic Canyon Cyclorama
-  const cycGeo = new THREE.CylinderGeometry(340, 340, 240, 48, 1, true);
-  const cycMat = new THREE.MeshBasicMaterial({
-    map: canyonTex,
-    side: THREE.BackSide,
-    fog: false,
-    depthWrite: false,
+  // 2. Celestial Sky & Twilight Dusk Environment
+  const sky = createSkyDome({
+    top: 0x071126,
+    mid: 0x15213d,
+    horizon: 0x6a372c,
+    sunDir: [0.65, 0.05, -0.75],
+    sunColor: 0xff7e38,
+    sunPow: 85,
+    moonDir: [-0.45, 0.55, 0.7],
+    stars: 1.2,
+    milky: 1.0,
   });
-  disposables.push(cycGeo, cycMat);
-  const cyclorama = new THREE.Mesh(cycGeo, cycMat);
-  cyclorama.position.set(0, 70, 0);
-  add(cyclorama);
+  add(sky);
 
-  // Starfield
-  const starPos = [];
-  for (let i = 0; i < 750; i++) {
-    const u = Math.random();
-    const v = Math.random() * 0.75 + 0.25;
-    const th = u * Math.PI * 2;
-    const r = 320;
-    const y = v * r;
-    const rr = Math.sqrt(r * r - y * y);
-    starPos.push(Math.cos(th) * rr, y, Math.sin(th) * rr);
+  // Cool twilight moonlight casting soft architectural shadows
+  const moonLight = kit.sun(-35, 55, 30, 0x9eb8ff, 0.8, { shadow: true, size: 45, shadowMap: 2048 });
+
+  // 3. Desert Ground & Surrounding Wadi Hanifa Canyon Cliffs
+  kit.plane(800, 800, 0, -0.6, 0, kit.mat(null, { color: 0x0a0c10, roughness: 1 }));
+
+  // Natural stepped limestone cliff formations flanking the entrance
+  for (let i = 0; i < 9; i++) {
+    const a = (i / 9) * Math.PI * 1.4 - 0.7;
+    const r = 85 + (i % 3) * 20;
+    kit.box(38, 28 + (i % 4) * 10, 36, Math.cos(a) * r, 8, Math.sin(a) * r, mStone, {
+      rot: [0, a + 0.4, 0],
+      tile: 3,
+    });
   }
-  const starGeo = new THREE.BufferGeometry();
-  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starPos, 3));
-  const starMat = new THREE.PointsMaterial({
-    color: 0xffffff,
-    size: 1.4,
-    sizeAttenuation: false,
-    transparent: true,
-    opacity: 0.75,
-    fog: false,
-    depthWrite: false,
-  });
-  disposables.push(starGeo, starMat);
-  add(new THREE.Points(starGeo, starMat));
 
-  // Ground plane (Desert rocky bed)
-  const groundGeo = new THREE.PlaneGeometry(700, 700);
-  disposables.push(groundGeo);
-  const ground = new THREE.Mesh(groundGeo, new THREE.MeshStandardMaterial({ color: 0x090a0d, roughness: 1 }));
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.5;
-  add(ground);
-
-  /* ---------- 2. Architectural Structure ---------- */
-  // Main Ground Floor Slab (Polished Marquina Marble inside)
-  box(32, 0.45, 28, 0, -0.22, -6, M.marbleFloor);
-
-  // Front Entrance Terrace & Pool Court
-  box(34, 0.4, 24, 0, -0.2, 20, M.stoneTerrace);
-
-  // Side Canyon Overhang Terrace
-  box(18, 0.4, 22, 22, -0.2, -2, M.stoneTerrace);
-
-  // Reflective Infinity Pool
-  const pool = new Reflector(new THREE.PlaneGeometry(16, 11), {
-    textureWidth: Math.floor(window.innerWidth * 0.5),
-    textureHeight: Math.floor(window.innerHeight * 0.5),
-    color: 0x223545,
-    clipBias: 0.003,
-  });
-  pool.rotation.x = -Math.PI / 2;
-  pool.position.set(0, 0.02, 19.5);
-  add(pool);
-  disposables.push(pool.geometry);
-
-  // Pool perimeter coping with recessed gold glow channels
-  box(16.8, 0.06, 0.4, 0, 0.03, 13.8, M.stoneTerrace);
-  box(16.8, 0.06, 0.4, 0, 0.03, 25.2, M.stoneTerrace);
-  box(0.4, 0.06, 11.8, -8.2, 0.03, 19.5, M.stoneTerrace);
-  box(0.4, 0.06, 11.8, 8.2, 0.03, 19.5, M.stoneTerrace);
-  // Gold waterlines
-  box(16, 0.03, 0.04, 0, 0.07, 14.05, M.goldGlow);
-  box(16, 0.03, 0.04, 0, 0.07, 24.95, M.goldGlow);
-
-  // Stepping stones floating over water to front door
+  // Natural boulders framing the arrival approach with warm landscape uplights
   for (let i = 0; i < 6; i++) {
-    box(2.8, 0.08, 1.2, 0, 0.04, 13.5 - i * 1.35, M.marbleFloor);
+    const sign = i % 2 === 0 ? -1 : 1;
+    const bx = sign * (14 + (i * 2.2));
+    const bz = 22 + i * 2.5;
+    const rock = kit.rbox(3.2 + (i % 3) * 0.8, 1.8 + (i % 2) * 0.9, 2.8, 0.4, bx, 0.6, bz, mStone, {
+      rot: [0.1, i * 0.8, 0.05],
+      tile: 1.5,
+    });
+    // Discreet warm landscape rock wash light
+    if (i < 4) {
+      kit.point(bx + sign * 1.2, 0.8, bz, 0xffbe72, 8, 8, 1.8);
+    }
   }
 
-  // Monolithic Cantilevered Roofs
-  box(36, 0.55, 36, 0, 4.25, -2, M.stoneTerrace); // Primary lower slab
-  box(26, 0.5, 24, 2, 6.4, -9, M.stoneTerrace); // Secondary floating upper volume
-  // Cove lighting under roof overhangs
-  box(36.1, 0.04, 0.08, 0, 3.96, 15.9, M.coveWarm);
-  box(0.08, 0.04, 36, -18, 3.96, -2, M.coveWarm);
-  box(0.08, 0.04, 36, 18, 3.96, -2, M.coveWarm);
+  // 4. Main Architectural Volumes & Slabs
+  // Interior Ground floor slab (Italian Nero Marquina marble)
+  kit.box(34, 0.5, 30, 0, -0.25, -6, mFloor, { tile: 2 });
+  // Front entrance terrace & Pool court
+  kit.box(36, 0.4, 26, 0, -0.2, 21, mTerrace, { tile: 2 });
+  // Cantilevered side cliff terrace
+  kit.box(22, 0.45, 24, 22, -0.22, -2, mTerrace, { tile: 2 });
 
-  // Outer Perimeter Walls
-  box(32.4, 4, 0.4, 0, 2, -20, M.darkWall); // Rear wall
-  box(0.4, 4, 28.4, -16, 2, -6, M.limestoneWall); // Left wall
-  box(0.4, 4, 12, 16, 2, -14, M.limestoneWall); // Right rear wall
-  box(0.4, 4, 8, 16, 2, 4, M.limestoneWall); // Right front wall
+  // Cantilevered floating roofs (Massive off-form board-marked concrete slabs)
+  kit.box(38, 0.6, 38, 0, 4.3, -2, mConc, { tile: 2 });
+  kit.box(28, 0.55, 26, 2, 6.6, -9, mConc, { tile: 2 });
 
-  // Panoramic Glass Facades (Front curtain wall)
-  box(14, 3.9, 0.05, -8.5, 1.95, 8, M.glass);
-  box(14, 3.9, 0.05, 8.5, 1.95, 8, M.glass);
-  box(3, 0.9, 0.05, 0, 3.45, 8, M.glass); // Transom over door opening
-  // Bronze Mullions
-  for (let x = -15; x <= 15; x += 3) {
-    if (Math.abs(x) < 1.6) continue;
-    box(0.08, 4, 0.12, x, 2, 8, M.brushedBrass);
+  // Recessed downward ceiling cove channels (Facing DOWNWARD onto the facade, no camera glare)
+  // Concealed inside a 20cm ceiling pocket behind the fascia lip
+  kit.box(34, 0.04, 0.08, 0, 3.96, 8.8, mWarmCove);
+  kit.box(0.08, 0.04, 28, -16.5, 3.96, -6, mWarmCove);
+  kit.box(0.08, 0.04, 28, 16.5, 3.96, -6, mWarmCove);
+
+  // Ceiling soffit acoustic dark walnut panels
+  kit.box(33.8, 0.04, 29.8, 0, 3.98, -6, mWood, { tile: 2 });
+
+  // Monolithic perimeter walls
+  kit.box(34.2, 4.2, 0.5, 0, 2.1, -20.5, mConc, { tile: 2 }); // Rear wall
+  kit.box(0.5, 4.2, 30.5, -17, 2.1, -6, mStone, { tile: 2 });  // Left limestone cliff wall
+  kit.box(0.5, 4.2, 14, 17, 2.1, -14, mStone, { tile: 2 });    // Right rear wall
+  kit.box(0.5, 4.2, 9, 17, 2.1, 4.5, mStone, { tile: 2 });     // Right front wall
+
+  // 5. Monumental Structural Glazing & Pivot Entrance Door
+  // Ultra-slim dark bronze mullions (Sky-Frame style sightlines)
+  kit.box(15, 4.0, 0.06, -9, 2.0, 8.5, mGlass);
+  kit.box(15, 4.0, 0.06, 9, 2.0, 8.5, mGlass);
+  kit.box(3.2, 0.9, 0.06, 0, 3.55, 8.5, mGlass); // Door transom
+
+  for (let x = -16; x <= 16; x += 3.2) {
+    if (Math.abs(x) < 1.8) continue;
+    kit.box(0.06, 4.1, 0.14, x, 2.05, 8.5, mDarkBronze);
   }
-  box(32, 0.08, 0.14, 0, 3.96, 8, M.brushedBrass);
-  box(0.1, 4, 0.14, -1.5, 2, 8, M.brushedBrass);
-  box(0.1, 4, 0.14, 1.5, 2, 8, M.brushedBrass);
+  kit.box(34, 0.06, 0.16, 0, 4.05, 8.5, mDarkBronze);
+  kit.box(0.08, 4.1, 0.16, -1.7, 2.05, 8.5, mDarkBronze);
+  kit.box(0.08, 4.1, 0.16, 1.7, 2.05, 8.5, mDarkBronze);
 
-  // Side glass pocket doors leading to outdoor terrace
-  box(0.05, 3.9, 8.5, 15.95, 1.95, -2, M.glass);
+  // Grand 3.8m Tall Pivot Entrance Door (Swung slightly ajar 15° to invite the visitor inside)
+  const doorPivot = kit.group(1.6, 0, 8.5, scene, -0.26);
+  kit.box(3.2, 3.9, 0.08, -1.55, 2.0, 0, mGlass, { parent: doorPivot });
+  kit.box(3.24, 0.08, 0.12, -1.55, 3.96, 0, mBrass, { parent: doorPivot });
+  kit.box(3.24, 0.08, 0.12, -1.55, 0.04, 0, mBrass, { parent: doorPivot });
+  kit.box(0.08, 4.0, 0.12, -0.04, 2.0, 0, mBrass, { parent: doorPivot });
+  kit.box(0.08, 4.0, 0.12, -3.16, 2.0, 0, mBrass, { parent: doorPivot });
+  // Sculptural 2.6m tall cylindrical brushed bronze vertical pull handle
+  kit.cyl(0.03, 0.03, 2.6, -2.9, 1.85, 0.08, mBrass, { parent: doorPivot, seg: 16 });
+  kit.cyl(0.03, 0.03, 2.6, -2.9, 1.85, -0.08, mBrass, { parent: doorPivot, seg: 16 });
 
-  /* ---------- 3. Great Living Hall & Fireplace ---------- */
-  // Fluted acoustic timber feature wall (rear)
-  const slatGeo = new THREE.BoxGeometry(0.12, 3.8, 0.18);
-  disposables.push(slatGeo);
-  const slats = new THREE.InstancedMesh(slatGeo, M.darkWalnut, 80);
+  // 6. Suspended Infinity Reflecting Pool & Water Court
+  // Pool Basin (sunken -0.45m with dark basalt stone)
+  kit.box(18.4, 0.5, 13.4, 0, -0.25, 20.5, mBasalt, { tile: 2 });
+
+  // Physical Water Reflector with multi-frequency ripples and Fresnel reflections
+  const pool = createWater({
+    w: 18,
+    d: 13,
+    color: 0x3892be,
+    deep: 0x02121e,
+    reflectivity: 0.78,
+    ripple: 0.0035,
+    res: 0.5,
+  });
+  pool.position.set(0, 0.02, 20.5);
+  add(pool);
+
+  // Dark flamed basalt coping border with recessed infinity weir drop (NO harsh neon lines!)
+  kit.box(18.6, 0.08, 0.45, 0, 0.04, 13.8, mBasalt);
+  kit.box(18.6, 0.08, 0.45, 0, 0.04, 27.2, mBasalt);
+  kit.box(0.45, 0.08, 13.8, -9.2, 0.04, 20.5, mBasalt);
+  kit.box(0.45, 0.08, 13.8, 9.2, 0.04, 20.5, mBasalt);
+
+  // Submerged fiber-optic pool lights casting subtle deep teal luminescence
+  for (const pz of [16.5, 20.5, 24.5]) {
+    kit.point(-5, -0.15, pz, 0x3aa0c8, 3.5, 6, 2);
+    kit.point(5, -0.15, pz, 0x3aa0c8, 3.5, 6, 2);
+  }
+
+  // 7. Monolithic Floating Roman Travertine Stepping Stones
+  // 7 monumental slabs crossing the pool to the glass entrance
+  for (let i = 0; i < 7; i++) {
+    const sz = 14.8 - i * 1.45;
+    // Recessed dark plinth underneath (creates true cantilevered floating reveal)
+    kit.box(2.8, 0.06, 0.9, 0, 0.03, sz, mBasalt);
+    // Upper Roman Travertine slab
+    kit.rbox(3.4, 0.12, 1.35, 0.03, 0, 0.09, sz, mTravertine, { tile: 1 });
+    // Concealed architectural LED glow tucked strictly under the stone overhang
+    // Facing downward onto the water, never pointing directly at the camera
+    kit.box(2.8, 0.015, 0.02, 0, 0.04, sz - 0.55, mStepGlow);
+    kit.box(2.8, 0.015, 0.02, 0, 0.04, sz + 0.55, mStepGlow);
+    // Soft point wash on the water beneath each stepping stone
+    kit.point(0, 0.03, sz, 0xffba6e, 2.2, 2.5, 2);
+  }
+
+  // Minimalist brushed bronze pathway bollards flanking the arrival approach
+  for (let i = 0; i < 4; i++) {
+    const bz = 15 + i * 3.5;
+    // Left bollard
+    kit.cyl(0.045, 0.045, 0.55, -9.8, 0.28, bz, mBrass, { seg: 12 });
+    kit.sphere(0.02, -9.8, 0.52, bz, mWarmCove);
+    kit.point(-9.8, 0.45, bz, 0xffbe72, 3.5, 3.0, 2);
+    // Right bollard
+    kit.cyl(0.045, 0.045, 0.55, 9.8, 0.28, bz, mBrass, { seg: 12 });
+    kit.sphere(0.02, 9.8, 0.52, bz, mWarmCove);
+    kit.point(9.8, 0.45, bz, 0xffbe72, 3.5, 3.0, 2);
+  }
+
+  // 8. Architectural Landscaping: Olive Trees, Agaves & Desert Flora
+  // Monolithic Travertine planter troughs flanking the terrace
+  kit.box(1.2, 0.55, 6.5, -12, 0.28, 20, mTravertine);
+  kit.box(1.2, 0.55, 6.5, 12, 0.28, 20, mTravertine);
+
+  // Sculptural olive trees with gnarled trunks and silvery foliage
+  kit.olive({ x: -12, z: 18.5, h: 2.8, potMat: mBasalt, seed: 1 });
+  kit.olive({ x: 12, z: 21.5, h: 2.6, potMat: mBasalt, seed: 3 });
+  kit.palm({ x: 28, z: 8, h: 8.5, lean: 0.35, seed: 1, scale: 1.1 });
+  kit.palm({ x: 30, z: -12, h: 7.5, lean: -0.28, seed: 4, scale: 0.95 });
+
+  // Blue desert agaves along terrace edges
+  kit.agave({ x: -12, z: 22.5, s: 1.2, seed: 2 });
+  kit.agave({ x: 12, z: 17.5, s: 1.1, seed: 4 });
+  kit.agave({ x: 18, z: 8, s: 1.3, seed: 5 });
+  kit.agave({ x: 25, z: 12, s: 0.9, seed: 6 });
+
+  // Warm landscape uplights washing the olive trees and palms
+  kit.spot(-12, 0.2, 17, -12, 2.5, 18.5, 0xffd290, 18, 0.5, 0.5);
+  kit.spot(12, 0.2, 23, 12, 2.5, 21.5, 0xffd290, 18, 0.5, 0.5);
+  kit.spot(26, 0.2, 8, 28, 6.0, 8, 0xffd290, 24, 0.6, 0.5);
+
+  // 9. Great Hall Interior (Monumental Fireplace & Living Suite)
+  // Fluted acoustic American walnut feature wall (rear)
+  const slatGeo = kit.track(new THREE.BoxGeometry(0.12, 4.0, 0.18));
+  const slats = new THREE.InstancedMesh(slatGeo, mWood, 86);
   const dummy = new THREE.Object3D();
-  for (let i = 0; i < 80; i++) {
-    dummy.position.set(-15 + i * 0.38, 1.95, -19.65);
+  for (let i = 0; i < 86; i++) {
+    dummy.position.set(-16.2 + i * 0.38, 2.0, -20.2);
     dummy.updateMatrix();
     slats.setMatrixAt(i, dummy.matrix);
   }
+  slats.castShadow = true;
   add(slats);
-  // Concealed cove LED strip behind slats
-  box(30, 0.06, 0.06, 0, 3.85, -19.45, M.coveWarm);
 
-  // Luxury Low-Profile Rug
-  box(11, 0.02, 9, 1, 0.01, -6, new THREE.MeshStandardMaterial({ color: 0x1f1d1b, roughness: 1 }));
+  // Concealed top grazing LED wash channel above walnut slats
+  kit.box(32, 0.04, 0.06, 0, 3.96, -20.0, mWarmCove);
 
-  // Monolithic Fireplace Feature Wall
-  box(9, 3.6, 0.5, 0, 1.8, -10.2, M.limestoneWall);
-  // Linear Flame Channel
-  box(6.5, 0.25, 0.08, 0, 0.8, -9.92, M.fireGlow);
-  box(7, 0.04, 0.22, 0, 1.05, -9.88, M.brushedBrass); // Brass mantel accent
-  box(9.2, 0.04, 0.08, 0, 3.55, -9.92, M.goldGlow); // Top accent line
-  // Cantilevered bench under fireplace
-  box(7.5, 0.35, 0.6, 0, 0.18, -9.5, M.darkWalnut);
+  // Monolithic Italian Nero Marquina Fireplace Block
+  kit.box(9.6, 3.8, 0.7, 0, 1.9, -10.5, mFloor, { tile: 2 });
+  // Solid rear stone barrier to guarantee 100% optical opacity from behind
+  kit.box(9.8, 3.9, 0.25, 0, 1.9, -10.95, mStone, { tile: 2 });
+  // Recessed dark bronze firebox cavity
+  kit.box(7.6, 0.6, 0.35, 0, 1.05, -10.15, mDarkBronze);
 
-  // Designer Sectional Sofa (Italian Charcoal Fabric)
-  const sofa = (x, z, ry, len) => {
-    const g = new THREE.Group();
-    box(len, 0.44, 1.3, 0, 0.28, 0, M.fabricBoucle, g); // Base seat
-    box(len, 0.6, 0.35, 0, 0.72, -0.52, M.fabricBoucle, g); // Backrest
-    box(0.35, 0.42, 1.3, -len / 2 + 0.18, 0.58, 0, M.fabricBoucle, g); // Left arm
-    box(0.35, 0.42, 1.3, len / 2 - 0.18, 0.58, 0, M.fabricBoucle, g); // Right arm
-    box(len, 0.08, 0.08, 0, 0.06, 0.55, M.brushedBrass, g); // Brass base plinth
-    g.position.set(x, 0, z);
-    g.rotation.y = ry;
-    add(g);
-  };
-  sofa(3.8, -6.8, 0, 5.4); // Main facing sofa
-  sofa(6.2, -4.0, -Math.PI / 2, 3.8); // L-return chaise
-  sofa(-2.6, -7.8, 0.35, 3.2); // Accent armchair set
+  // Continuous linear living flame (strictly linear, parallel to wall, frontOnly)
+  const flame = createFlame({
+    width: 7.2,
+    height: 0.48,
+    planes: 3,
+    freq: 5,
+    power: 2.6,
+    linear: true,
+    frontOnly: true,
+  });
+  flame.position.set(0, 0.85, -10.05);
+  add(flame);
 
-  // Minimalist Brushed Brass Coffee Table
-  box(2.4, 0.06, 1.3, 2.8, 0.42, -4.5, M.brushedBrass);
-  box(2.2, 0.36, 1.1, 2.8, 0.18, -4.5, M.darkWalnut);
+  kit.box(7.6, 0.04, 0.26, 0, 1.1, -10.05, mBrass); // Brushed brass hearth mantel
+  kit.box(8.2, 0.36, 0.7, 0, 0.18, -9.6, mWood);    // Low cantilevered walnut plinth
 
-  /* ---------- 4. Signature Project Art Gallery (Left Wing) ---------- */
-  box(0.15, 3.8, 22, -15.6, 1.95, -9.5, M.limestoneWall); // Gallery partition wall
-  box(0.04, 3.6, 21.6, -15.48, 1.95, -9.5, M.coveWarm); // Wall illumination wash
+  // Italian Luxury Living Suite: Curved Bouclé Sectional & Armchair
+  kit.cushionSofa({ x: 4.2, z: -6.5, ry: 0, len: 5.6, depth: 1.25, fabric: mFabBoucle, legs: mBrass });
+  kit.cushionSofa({ x: 7.2, z: -3.8, ry: -Math.PI / 2, len: 4.0, depth: 1.25, fabric: mFabBoucle, legs: mBrass });
+  kit.armchair({ x: -2.8, z: -7.5, ry: 0.35, fabric: mDarkFab, legs: mBrass, scale: 1.15 });
 
-  const frameGeo = new THREE.PlaneGeometry(1, 1);
-  disposables.push(frameGeo);
+  // Minimalist Brushed Brass & Smoked Walnut Coffee Table
+  kit.rbox(2.6, 0.08, 1.4, 0.04, 3.2, 0.44, -4.6, mBrass);
+  kit.rbox(2.4, 0.36, 1.2, 0.04, 3.2, 0.18, -4.6, mWood);
+  kit.bookStack({ x: 3.6, y: 0.48, z: -4.4, parent: scene });
+  kit.vase({ x: 2.6, y: 0.48, z: -4.8, h: 0.38, r: 0.1, m: mBrass, branches: true });
 
-  const addGalleryArtwork = (texture, zPos, width, height, title) => {
-    // Brushed brass shadow frame
-    box(0.12, height + 0.26, width + 0.26, -15.35, 1.95, zPos, M.brushedBrass);
-    // Artwork canvas
-    const artMat = new THREE.MeshBasicMaterial({ map: texture, toneMapped: false });
-    disposables.push(artMat);
-    const plane = new THREE.Mesh(frameGeo, artMat);
-    plane.scale.set(width, height, 1);
-    plane.rotation.y = Math.PI / 2;
-    plane.position.set(-15.28, 1.95, zPos);
-    add(plane);
-    // Museum directional spotlight beam
-    box(0.15, 0.04, width * 0.85, -15.15, 1.95 + height / 2 + 0.5, zPos, M.goldGlow);
-    // Golden description plaque below frame
-    box(0.04, 0.12, 0.7, -15.28, 1.95 - height / 2 - 0.25, zPos, M.brushedBrass);
-  };
+  // Hand-knotted wool architectural area rug
+  kit.rbox(11.5, 0.02, 9.5, 0.08, 1.5, 0.01, -6, kit.mat(fabricTex, { color: 0x1f1d1b, roughness: 1 }));
 
+  // Atmospheric warm dust particles in Great Hall volume
+  const dust = createParticles({ count: 180, box: [16, 5, 16], center: [0, 2.5, -6], color: 0xffd290, opacity: 0.45 });
+  add(dust);
+
+  // Suspended architectural bronze halo chandelier floating above the Great Hall
+  const haloGeo = kit.track(new THREE.TorusGeometry(1.6, 0.03, 16, 48));
+  const halo = new THREE.Mesh(haloGeo, mBrass);
+  halo.rotation.x = Math.PI / 2;
+  halo.position.set(2, 3.25, -6);
+  add(halo);
+  for (let a = 0; a < Math.PI * 2; a += (Math.PI * 2) / 3) {
+    const hx = 2 + Math.cos(a) * 1.6;
+    const hz = -6 + Math.sin(a) * 1.6;
+    kit.cyl(0.005, 0.005, 0.72, hx, 3.61, hz, mBrass, { seg: 6 });
+  }
+  kit.point(2, 3.15, -6, 0xffca86, 16, 12, 1.8);
+
+  // 10. Curated Architectural Blueprint & Art Gallery (Left Wing)
+  // Dedicated gallery feature wall in dark limestone (NO glowing white billboard!)
+  kit.box(0.18, 4.0, 24, -16.5, 2.0, -9.5, mStone, { tile: 2 });
+
+  // 3 Signature Masterpiece Artworks in bespoke museum floating shadow-box frames
   const [tex1, tex2, tex3] = projectTextures;
-  addGalleryArtwork(tex1, -3.2, 4.6, 2.8, 'قصر الوادي المعلق');
-  addGalleryArtwork(tex2, -9.5, 4.6, 2.8, 'المخطط البارامتري الأيقوني');
-  addGalleryArtwork(tex3, -15.8, 4.6, 2.8, 'البرج السكني المستدام');
+  kit.artFrame({ w: 4.8, h: 2.8, x: -16.2, y: 2.2, z: -3.5, ry: Math.PI / 2, texture: tex1, frame: mBrass, emissive: 0.08 });
+  kit.artFrame({ w: 4.8, h: 2.8, x: -16.2, y: 2.2, z: -9.8, ry: Math.PI / 2, texture: tex2, frame: mBrass, emissive: 0.08 });
+  kit.artFrame({ w: 4.8, h: 2.8, x: -16.2, y: 2.2, z: -16.0, ry: Math.PI / 2, texture: tex3, frame: mBrass, emissive: 0.08 });
+
+  // Dedicated Museum Ceiling Pin-Spotlights (Focused directly onto each artwork)
+  kit.spot(-14, 3.8, -3.5, -16.2, 2.2, -3.5, 0xffe4bc, 24, 0.45, 0.6);
+  kit.spot(-14, 3.8, -9.8, -16.2, 2.2, -9.8, 0xffe4bc, 24, 0.45, 0.6);
+  kit.spot(-14, 3.8, -16.0, -16.2, 2.2, -16.0, 0xffe4bc, 24, 0.45, 0.6);
 
   // Sculptural Plinths with Golden Architectural Maquettes
-  for (const z of [-6.2, -12.8]) {
-    box(0.9, 0.95, 0.9, -12.5, 0.47, z, M.stoneTerrace);
-    box(0.94, 0.03, 0.94, -12.5, 0.96, z, M.brushedBrass);
-    const sculpture = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3, 0), M.brushedBrass);
-    sculpture.position.set(-12.5, 1.35, z);
-    sculpture.rotation.set(0.4, 0.8, 0.2);
-    disposables.push(sculpture.geometry);
-    add(sculpture);
+  for (const z of [-6.5, -13.0]) {
+    kit.box(1.0, 1.0, 1.0, -13.2, 0.5, z, mTerrace);
+    kit.box(1.04, 0.04, 1.04, -13.2, 1.02, z, mBrass);
+    const geom = kit.track(new THREE.DodecahedronGeometry(0.32, 0));
+    const mMaq = new THREE.Mesh(geom, mBrass);
+    mMaq.position.set(-13.2, 1.45, z);
+    mMaq.rotation.set(0.4, 0.8, 0.2);
+    add(mMaq);
+    // Pin-spot on maquette
+    kit.spot(-13.2, 3.8, z, -13.2, 1.45, z, 0xffe2b8, 16, 0.35, 0.5);
   }
 
-  /* ---------- 5. Private Dining & Hospitality Suite (Right Wing) ---------- */
-  // Solid Smoked Walnut Dining Table
-  box(7.2, 0.12, 2.4, 8.8, 0.86, -15, M.walnutWood);
-  box(6.8, 0.04, 0.06, 8.8, 0.94, -15, M.goldGlow); // Center brass runner
+  // 11. Private Dining & Hospitality Suite (Right Wing)
+  kit.box(7.2, 0.12, 2.4, 8.8, 0.86, -15, mWood);
   for (const sx of [-3.2, 3.2]) {
     for (const sz of [-0.95, 0.95]) {
-      box(0.1, 0.84, 0.1, 8.8 + sx, 0.42, -15 + sz, M.brushedBrass);
+      kit.box(0.1, 0.84, 0.1, 8.8 + sx, 0.42, -15 + sz, mBrass);
     }
   }
-  // Dining chairs
+  // Dining chairs in charcoal wool
   for (let i = 0; i < 4; i++) {
     for (const sz of [-1.6, 1.6]) {
-      box(0.52, 0.06, 0.52, 7.2 + i * 1.15, 0.5, -15 + sz, M.fabricDark);
-      box(0.52, 0.55, 0.06, 7.2 + i * 1.15, 0.8, -15 + sz + (sz > 0 ? 0.24 : -0.24), M.fabricDark);
-      box(0.05, 0.5, 0.05, 7.2 + i * 1.15, 0.25, -15 + sz, M.brushedBrass);
+      kit.diningChair({ x: 7.2 + i * 1.15, z: -15 + sz, ry: sz > 0 ? Math.PI : 0, fabric: mDarkFab, legs: mBrass });
     }
   }
-  // Suspended Brass Tubular Chandeliers
-  const tubeGeo = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 16);
-  disposables.push(tubeGeo);
+  // Tubular bronze pendant chandeliers
   for (let i = 0; i < 5; i++) {
-    const tube = new THREE.Mesh(tubeGeo, M.brushedBrass);
-    tube.position.set(7.0 + i * 0.9, 2.8, -15);
-    add(tube);
-    box(0.02, 1.2, 0.02, 7.0 + i * 0.9, 3.45, -15, M.brushedBrass); // Suspension cable
-    box(0.08, 0.08, 0.08, 7.0 + i * 0.9, 2.15, -15, M.goldGlow); // Light emitter tip
+    kit.cyl(0.04, 0.04, 1.2, 7.0 + i * 0.9, 2.8, -15, mBrass, { seg: 16 });
+    kit.cyl(0.01, 0.01, 1.2, 7.0 + i * 0.9, 3.45, -15, mBrass, { seg: 8 }); // Suspension wire
+    kit.sphere(0.05, 7.0 + i * 0.9, 2.15, -15, mWarmCove); // Crystal glowing tip
   }
 
-  /* ---------- 6. Suspended Cliff Terrace & Sunken Fire Lounge ---------- */
-  // Circular Stone Fire Pit
-  const fireBase = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, 0.45, 24), M.stoneTerrace);
-  fireBase.position.set(22.5, 0.22, -2);
-  disposables.push(fireBase.geometry);
-  add(fireBase);
-  // Burning Fire Core
-  const fireFlame = new THREE.Mesh(new THREE.ConeGeometry(0.45, 1.1, 12), M.fireGlow);
-  fireFlame.position.set(22.5, 0.95, -2);
-  disposables.push(fireFlame.geometry);
-  add(fireFlame);
+  // Sheer wave-fold linen curtains on side glass facades
+  const mCurtain = kit.mat(null, { color: 0xe8e4dc, roughness: 0.95, opacity: 0.5, transparent: true, side: THREE.DoubleSide });
+  kit.curtain({ w: 8.5, h: 3.9, x: 15.8, y: 1.95, z: -2, ry: Math.PI / 2, m: mCurtain, folds: 16 });
 
-  // Sunken Circular Curved Lounge Seating
+  // 12. Suspended Cliff Terrace & Sunken Fire Lounge
+  const fireBase = kit.cyl(1.1, 1.25, 0.5, 22.5, 0.25, -2, mTerrace, { seg: 28 });
+  const terraceFlame = createFlame({ width: 1.8, height: 0.75, planes: 4, freq: 4, power: 3.2 });
+  terraceFlame.position.set(22.5, 0.55, -2);
+  add(terraceFlame);
+
+  // Circular curved sunken seating
   for (let i = 0; i < 6; i++) {
     const a = (i / 6) * Math.PI * 2 + 0.3;
-    const bench = box(1.8, 0.42, 0.95, 22.5 + Math.cos(a) * 3.4, 0.21, -2 + Math.sin(a) * 3.4, M.fabricBoucle);
-    bench.rotation.y = -a + Math.PI / 2;
-  }
-  // Low ambient terrace perimeter gold markers
-  for (let i = 0; i < 6; i++) {
-    box(0.08, 0.45, 0.08, 30.5, 0.22, -10 + i * 3.2, M.goldGlow);
+    kit.box(2.0, 0.45, 1.0, 22.5 + Math.cos(a) * 3.6, 0.22, -2 + Math.sin(a) * 3.6, mFabBoucle, {
+      ry: -a + Math.PI / 2,
+    });
   }
 
-  /* ---------- 7. Architectural Lighting Setup ---------- */
-  scene.add(new THREE.AmbientLight(0x454e68, 0.45));
-  scene.add(new THREE.HemisphereLight(0x5a688d, 0x0c0e14, 0.4));
+  // 13. Calibrated Architectural Lighting Setup
+  // Exterior ambient fill
+  kit.sun(0, 5, 0, 0x445577, 0.38);
 
-  // Moon light (subtle cool blue fill)
-  const moon = new THREE.DirectionalLight(0x9cb0ff, 0.45);
-  moon.position.set(-40, 50, 40);
-  scene.add(moon);
+  // Interior warm point lights (2400K - 2700K luxury residential temperature)
+  kit.point(0, 3.4, 3, 0xffd094, 26, 22, 1.8);
+  kit.point(2, 3.4, -6, 0xffc27d, 30, 24, 1.8);
 
-  // Interior Architectural Point Lights
-  const warmLights = [];
-  const addWarmPoint = (x, y, z, color, intensity, distance) => {
-    const l = new THREE.PointLight(color, intensity, distance, 1.8);
-    l.position.set(x, y, z);
-    scene.add(l);
-    warmLights.push(l);
-    return l;
-  };
+  // Fireplace dynamic flicker light (confined forward to Great Hall)
+  const fireLight = kit.point(0, 1.1, -9.2, 0xff7a20, 20, 8.0, 2.0);
 
-  addWarmPoint(0, 3.2, 4, 0xffd29d, 28, 20); // Entrance portal
-  addWarmPoint(2, 3.2, -6, 0xffc482, 32, 22); // Living hall center
-  const fireLight = addWarmPoint(0, 1.2, -9.5, 0xff7e24, 20, 12); // Living fireplace
-  addWarmPoint(-12, 3.2, -9, 0xffcf94, 30, 20); // Gallery lighting
-  addWarmPoint(8.8, 3.0, -15, 0xffca86, 28, 18); // Dining suite
-  const terraceFireLight = addWarmPoint(22.5, 1.8, -2, 0xff7e24, 22, 14); // Terrace fire pit
-  addWarmPoint(0, 1.8, 19.5, 0x6ca3c2, 16, 20); // Pool water glow
+  // Terrace fire pit flicker light
+  const terraceFireLight = kit.point(22.5, 2.0, -2, 0xff7a20, 28, 16, 1.8);
+
+  // Dining suite warm chandelier wash
+  kit.point(8.8, 2.8, -15, 0xffca86, 26, 18, 1.8);
+
+  // Gallery warm ambient bounce
+  kit.point(-12, 3.2, -9.5, 0xffcf94, 24, 18, 1.8);
+
+  // Pool water subtle ambient bounce
+  kit.point(0, 1.5, 20.5, 0x5aa2cc, 16, 18, 1.8);
 
   return {
     update(time) {
-      // Gentle twinkle & organic flame flicker
-      starMat.opacity = 0.65 + Math.sin(time * 0.9) * 0.12;
-      fireFlame.scale.set(
-        1 + Math.sin(time * 8.5) * 0.12,
-        1 + Math.sin(time * 6.8) * 0.18,
-        1 + Math.cos(time * 7.9) * 0.12,
-      );
-      fireLight.intensity = 18 + Math.sin(time * 10) * 3;
-      terraceFireLight.intensity = 20 + Math.sin(time * 8.7) * 3.5;
+      // Dynamic water ripples
+      if (pool.userData?.tick) pool.userData.tick(time);
+      // Dynamic flames
+      if (flame.userData?.tick) flame.userData.tick(time);
+      if (terraceFlame.userData?.tick) terraceFlame.userData.tick(time);
+      // Sky & dust particles
+      if (sky.userData?.tick) sky.userData.tick(time);
+      if (dust.userData?.tick) dust.userData.tick(time);
+
+      // Realistic organic firelight flicker
+      fireLight.intensity = 22 + Math.sin(time * 9.5) * 3.5 + Math.cos(time * 14.2) * 1.8;
+      terraceFireLight.intensity = 25 + Math.sin(time * 8.2) * 4.0 + Math.cos(time * 12.7) * 2.1;
     },
     dispose() {
-      disposables.forEach((d) => d.dispose && d.dispose());
-      renderer && renderer.renderLists.dispose();
+      disposables.forEach((d) => {
+        if (!d) return;
+        if (typeof d.dispose === 'function') d.dispose();
+        if (d.geometry && typeof d.geometry.dispose === 'function') d.geometry.dispose();
+        if (d.material) {
+          if (Array.isArray(d.material)) {
+            d.material.forEach((m) => m && typeof m.dispose === 'function' && m.dispose());
+          } else if (typeof d.material.dispose === 'function') {
+            d.material.dispose();
+          }
+        }
+      });
+      renderer && renderer.renderLists?.dispose();
     },
   };
 }

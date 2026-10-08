@@ -1,0 +1,203 @@
+/* ==========================================================================
+   ARCHITECTURAL BLUEPRINT MODAL (Interactive CAD Viewport)
+   ========================================================================== */
+
+.arch-blueprint-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(5, 7, 10, 0.88);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 3vh, 32px);
+  animation: modalFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.arch-blueprint-modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 1320px;
+  max-height: 92vh;
+  background: linear-gradient(155deg, rgba(14, 17, 24, 0.96) 0%, rgba(9, 11, 16, 0.98) 100%);
+  border: 1px solid var(--border-gold);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 35px 80px rgba(0, 0, 0, 0.85), 0 0 50px rgba(200, 169, 126, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modalScaleUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Header */
+.arch-bp-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: clamp(18px, 2.5vh, 26px) clamp(20px, 3vw, 36px);
+  background: rgba(8, 10, 15, 0.9);
+  border-bottom: 1px solid var(--border-subtle);
+  gap: 20px;
+}
+
+.arch-bp-modal-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arch-bp-tag-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.arch-bp-scale-badge {
+  font-family: var(--font-en);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--gold-light);
+  background: rgba(200, 169, 126, 0.1);
+  border: 1px solid rgba(200, 169, 126, 0.25);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.arch-bp-modal-title {
+  font-family: var(--font-hero-ar, var(--font-ar));
+  font-size: clamp(1.4rem, 2.4vw, 2.2rem);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.arch-bp-modal-sub {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.arch-bp-modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.25s var(--ease-expo);
+  flex-shrink: 0;
+}
+
+.arch-bp-modal-close-btn:hover {
+  background: rgba(200, 169, 126, 0.2);
+  border-color: var(--gold-primary);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+/* Controls Bar */
+.arch-bp-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px clamp(20px, 3vw, 36px);
+  background: rgba(12, 14, 20, 0.85);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+/* Stage */
+.arch-bp-modal-stage {
+  display: grid;
+  grid-template-columns: 1.8fr 1fr;
+  flex: 1;
+  min-height: 480px;
+  max-height: calc(92vh - 180px);
+  overflow: hidden;
+}
+
+/* Canvas Viewport */
+.arch-bp-canvas-wrap {
+  position: relative;
+  background: #07090d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-inline-end: 1px solid var(--border-subtle);
+  padding: clamp(16px, 2.5vw, 32px);
+}
+
+.arch-bp-canvas-wrap .blueprint-img {
+  width: 100%;
+  height: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  filter: contrast(1.08) brightness(0.98);
+  border-radius: var(--radius-sm);
+}
+
+/* Info Drawer */
+.arch-bp-info-drawer {
+  background: rgba(10, 12, 18, 0.92);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: clamp(18px, 2.5vh, 26px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .arch-bp-modal-stage {
+    grid-template-columns: 1fr;
+    max-height: calc(92vh - 140px);
+    overflow-y: auto;
+  }
+
+  .arch-bp-canvas-wrap {
+    min-height: 340px;
+    border-inline-end: none;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+}
+
+@media (max-width: 640px) {
+  .arch-bp-controls-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .floor-quick-specs {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

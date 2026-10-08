@@ -20,39 +20,11 @@ import './ArchitecturalProjectCard.css';
  * - Blueprint CAD Wireframe Overlay Mode
  * - Multi-layer Parallax (floating badges & typography)
  */
-export default function ArchitecturalProjectCard({ project, lang, onInspect, onEnter }) {
+export default function ArchitecturalProjectCard({ project, lang, onInspect, onEnter, onOpenBlueprint }) {
   const isAr = lang === 'ar';
   const cardRef = useRef(null);
-  const [tilt, setTilt] = useState({ rx: 0, ry: 0, gx: 50, gy: 50 });
   const [isHovered, setIsHovered] = useState(false);
   const [lightingMode, setLightingMode] = useState('dusk'); // 'day' | 'dusk' | 'night'
-  const [isBlueprintMode, setIsBlueprintMode] = useState(false);
-
-  const handlePointerMove = (e) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const px = x / rect.width;
-    const py = y / rect.height;
-
-    // Calculate smooth 3D rotation angles (-12deg to +12deg)
-    const rx = (py - 0.5) * -16;
-    const ry = (px - 0.5) * 16;
-
-    setTilt({
-      rx,
-      ry,
-      gx: Math.round(px * 100),
-      gy: Math.round(py * 100),
-    });
-  };
-
-  const handlePointerLeave = () => {
-    setIsHovered(false);
-    setTilt({ rx: 0, ry: 0, gx: 50, gy: 50 });
-  };
 
   const getLightingClass = () => {
     switch (lightingMode) {
@@ -71,36 +43,17 @@ export default function ArchitecturalProjectCard({ project, lang, onInspect, onE
       ref={cardRef}
       className={`arch-card-wrap ${isHovered ? 'is-active' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseMove={handlePointerMove}
-      onMouseLeave={handlePointerLeave}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      <div
-        className="arch-card-inner glass-card"
-        style={{
-          transform: isHovered
-            ? `perspective(1200px) rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) scale3d(1.025, 1.025, 1.025)`
-            : 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)',
-        }}
-      >
-        {/* Dynamic Glare Reflection */}
-        <div
-          className="arch-card-glare"
-          style={{
-            background: `radial-gradient(circle at ${tilt.gx}% ${tilt.gy}%, rgba(255, 235, 195, 0.16) 0%, transparent 60%)`,
-          }}
-        />
-
-        {/* Media Frame with 3D Depth */}
-        <div className={`arch-media-box ${getLightingClass()} ${isBlueprintMode ? 'is-blueprint' : ''}`}>
+      <div className="arch-card-inner glass-card">
+        {/* Media Frame with Elegant Lighting */}
+        <div className={`arch-media-box ${getLightingClass()}`}>
           <img
             src={project.image}
             alt={isAr ? project.titleAr : project.titleEn}
             className="arch-img"
             loading="lazy"
           />
-
-          {/* Blueprint CAD grid layer overlay */}
-          <div className="arch-cad-grid" aria-hidden="true" />
 
           {/* Lighting atmosphere controller */}
           <div className="arch-lighting-ctrl" onClick={(e) => e.stopPropagation()}>
@@ -127,15 +80,22 @@ export default function ArchitecturalProjectCard({ project, lang, onInspect, onE
             </button>
             <span className="arch-light-div" />
             <button
-              onClick={() => setIsBlueprintMode(!isBlueprintMode)}
-              className={`arch-light-btn ${isBlueprintMode ? 'is-active' : ''}`}
-              title={isAr ? 'مخطط هندسي CAD' : 'Blueprint Mode'}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenBlueprint) {
+                  onOpenBlueprint(project);
+                } else if (onInspect) {
+                  onInspect(project);
+                }
+              }}
+              className="arch-light-btn arch-light-btn-cad"
+              title={isAr ? 'عرض المخطط الهندسي CAD' : 'View CAD Blueprint'}
             >
               <Layers size={13} />
             </button>
           </div>
 
-          {/* Top floating badge (Parallax 3D Z-depth) */}
+          {/* Top floating badge */}
           <div className="arch-card-badge-row">
             <span className="arch-award-badge">
               <Award size={13} className="gold-icon" />

@@ -1,16 +1,82 @@
-# React + Vite
+# رواق الوادي | Riwaq Al-Wadi — Architecture & Luxury Living 🏛️
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+> **استوديو رواq الوادي للاستشارات والتطوير المعماري الفاخر**  
+> منصة معمارية رقمية متطورة تجسد صياغة الفراغ والضوء وأحدث مفاهيم الهندسة المعمارية الفاخرة، مدعومة بتجارب ثلاثية الأبعاد تفاعلية (3D Interactive Walkthrough) مبنية بأحدث تقنيات الويب الحديثة.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🌟 مميزات المنصة (Key Features)
 
-## React Compiler
+- **تجربة معمارية ثلاثية الأبعاد (3D Interactive Walkthrough):**
+  - محرك ثلاثي الأبعاد مخصص مبني بواسطة **Three.js** لاستعراض الفلل والقصور التفاعلية.
+  - إضاءة سينمائية، خامات واقعية، وتحكم سلس في الكاميرا وزوايا الرؤية.
+- **استعراض المخططات المعمارية (Architectural Blueprint Viewer):**
+  - نافذة تفاعلية (Modal) لاستعراض المخططات والمساقط الهندسية بدقة عالية.
+- **تفاصيل المشاريع المعمارية (Project Profiles):**
+  - استعراض شامل لكل مشروع معماري (العلا، الدرعية، القصور المعلقة، الفلل السكنية الفاخرة).
+  - بيانات دقيقة للمساحات، المواد المستخدمة، وفلسفة التصميم المعماري.
+- **هوية بصرية وطباعة فاخرة (Luxury Typography & Aesthetics):**
+  - خطوط عربية ولاتينية منتقاة بعناية (\Amiri\, \Alexandria\, \Cairo\, \Cinzel\, \Marcellus\).
+  - لوحة ألوان مستوحاة من الحجر الطبيعي والعمارة النجدية الحديثة.
+  - تجربة مستخدم فائقة الانسيابية وتجاوب كامل مع مختلف الشاشات.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the Oxlint configuration
+## 🛠️ التقنيات المستخدمة (Tech Stack)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+- **Framework:** [React 19](https://react.dev/)
+- **Build Tool:** [Vite 8](https://vitejs.dev/)
+- **3D Graphics & Physics:** [Three.js](https://threejs.org/)
+- **Routing:** [React Router v7](https://reactrouter.com/)
+- **Icons:** [Lucide React](https://lucide.dev/)
+- **Linter & Code Quality:** [Oxlint](https://oxc.rs/)
+
+---
+
+## 🚀 التثبيت والتشغيل محلياً (Getting Started)
+
+### 1. المتطلبات:
+- **Node.js:** \18.0.0\ أو أحدث.
+- **npm:** \9.0.0\ أو أحدث.
+
+### 2. تثبيت الحزم:
+\\\ash
+npm install
+\\\
+
+### 3. تشغيل خادم التطوير:
+\\\ash
+npm run dev
+\\\
+
+### 4. بناء المشروع للإنتاج (Production Build):
+\\\ash
+npm run build
+\\\
+
+---
+
+## 📁 هيكلية المشروع (Project Architecture)
+
+\\\
+riwaq-alwadi-v2/
+├── public/                  # الملفات العامة والمخططات والصور الثابتة
+│   └── images/blueprints/   # المخططات المعمارية للمشاريع
+├── src/
+│   ├── components/          # المكونات التفاعلية
+│   │   ├── home/            # مكونات الصفحة الرئيسية والمشهد التفاعلي (villaScene)
+│   │   ├── projects/        # بطاقات ومودال المخططات وتفاصيل المشاريع
+│   │   └── shared/          # المكونات المشتركة والتنقل
+│   ├── data/                # بيانات المشاريع والمواصفات المعمارية
+│   ├── pages/               # صفحات التطبيق (Home, Media, Projects, etc.)
+│   ├── styles/              # متغيرات التصميم والأنماط العامة
+│   └── walkthrough/         # محرك المشاهد ثلاثية الأبعاد (Three.js Engine)
+├── index.html               # نقطة الدخول الرئيسية وتضمين الخطوط
+├── vercel.json              # إعدادات الاستضافة والتوجيه
+└── vite.config.js           # إعدادات Vite
+\\\
+
+---
+
+## 📄 الترخيص (License)
+خاص بـ **رواق الوادي (Riwaq Al-Wadi)** ومطور بواسطة **SpinesTech** © 2026. جميع الحقوق محفوظة.

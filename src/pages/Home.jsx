@@ -5,6 +5,8 @@ import {
   Award,
   Sparkles,
   Building,
+  Building2,
+  Maximize2,
   TreePine,
   ShieldCheck,
   Quote,
@@ -18,6 +20,7 @@ import BlueprintExplorer from '../components/home/BlueprintExplorer';
 import ImmersiveIntro from '../components/home/ImmersiveIntro';
 import ArchitecturalProjectCard from '../components/projects/ArchitecturalProjectCard';
 import ArchitecturalMasterpieceModal from '../components/projects/ArchitecturalMasterpieceModal';
+import ArchitecturalBlueprintModal from '../components/projects/ArchitecturalBlueprintModal';
 import './Home.css';
 
 const ProjectWalkthrough = lazy(() => import('../components/projects/ProjectWalkthrough'));
@@ -25,25 +28,74 @@ const ProjectWalkthrough = lazy(() => import('../components/projects/ProjectWalk
 export default function Home({ lang }) {
   const [activeInspectProject, setActiveInspectProject] = useState(null);
   const [walkthroughProject, setWalkthroughProject] = useState(null);
+  const [blueprintModalProject, setBlueprintModalProject] = useState(null);
   return (
     <div className="home-page">
       {/* 1. IMMERSIVE 3D WALKTHROUGH INTRO */}
       <ImmersiveIntro lang={lang} />
 
-      {/* 2. STATS & MILESTONES RIBBON */}
-      <section className="stats-ribbon-section">
+      {/* 2. STATS & ARCHITECTURAL MILESTONES */}
+      <section className="stats-ribbon-section" id="studio-milestones">
         <div className="container">
-          <div className="stats-ribbon-grid glass-card">
-            {STUDIO_STATS.map((stat, idx) => (
-              <div key={idx} className="stat-card">
-                <div className="stat-number-wrap">
-                  <span className="stat-number">{stat.value}</span>
+          <div className="stats-header">
+            <span className="gold-tag">
+              <Award size={14} />
+              {lang === 'ar' ? 'سجل الريادة والمنجزات' : 'Architectural Legacy & Scale'}
+            </span>
+            <h2 className="stats-heading">
+              {lang === 'ar'
+                ? 'أرقام تصنع الفارق وترسخ الهيبة المعمارية'
+                : 'Pioneering Scale Across the Region'}
+            </h2>
+            <p className="stats-lead">
+              {lang === 'ar'
+                ? 'عقدان من صياغة المعالم الفاخرة والقصور الخاصة التي تتجاوز حدود الزمن وتلهم الأجيال.'
+                : 'Nearly two decades of sculpting iconic monuments, monolithic villas, and visionary private sanctuaries.'}
+            </p>
+          </div>
+
+          <div className="stats-cards-grid">
+            {STUDIO_STATS.map((stat) => {
+              const IconComponent =
+                stat.icon === 'Sparkles'
+                  ? Sparkles
+                  : stat.icon === 'Building2'
+                  ? Building2
+                  : stat.icon === 'Award'
+                  ? Award
+                  : Maximize2;
+
+              return (
+                <div key={stat.id} className="stat-arch-card">
+                  {/* Subtle architectural corner accents */}
+                  <span className="arch-card-corner top-left" />
+                  <span className="arch-card-corner bottom-right" />
+
+                  <div className="stat-card-top">
+                    <div className="stat-icon-pod">
+                      <IconComponent size={20} />
+                    </div>
+                    <span className="stat-badge-tag">
+                      {lang === 'ar' ? 'سجل موثق' : 'Verified'}
+                    </span>
+                  </div>
+
+                  <div className="stat-number-wrap">
+                    <span className="stat-number">{stat.value}</span>
+                  </div>
+
+                  <h3 className="stat-label">
+                    {lang === 'ar' ? stat.labelAr : stat.labelEn}
+                  </h3>
+
+                  <p className="stat-desc">
+                    {lang === 'ar' ? stat.descAr : stat.descEn}
+                  </p>
+
+                  <div className="stat-card-glow-line" />
                 </div>
-                <span className="stat-label">
-                  {lang === 'ar' ? stat.labelAr : stat.labelEn}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -166,6 +218,7 @@ export default function Home({ lang }) {
                 lang={lang}
                 onInspect={(proj) => setActiveInspectProject(proj)}
                 onEnter={(proj) => setWalkthroughProject(proj)}
+                onOpenBlueprint={(proj) => setBlueprintModalProject(proj)}
               />
             ))}
           </div>
@@ -250,6 +303,15 @@ export default function Home({ lang }) {
           project={activeInspectProject}
           lang={lang}
           onClose={() => setActiveInspectProject(null)}
+        />
+      )}
+
+      {/* Interactive CAD Architectural Blueprint Modal */}
+      {blueprintModalProject && (
+        <ArchitecturalBlueprintModal
+          project={blueprintModalProject}
+          lang={lang}
+          onClose={() => setBlueprintModalProject(null)}
         />
       )}
 

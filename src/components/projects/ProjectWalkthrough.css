@@ -16,43 +16,134 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-.wt-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 1; }
+.wt-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+  transition: opacity 0.4s var(--ease-smooth), visibility 0.4s var(--ease-smooth);
+  will-change: opacity, visibility;
+}
+
+/* Instantly and completely hide 3D canvas when user scrolls into profile */
+.wt-root.is-in-profile .wt-canvas {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 
 .wt-scroller {
-  position: absolute; inset: 0; z-index: 2; overflow-y: auto; overflow-x: hidden;
-  scrollbar-width: none; outline: none; overscroll-behavior: contain;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(200, 169, 126, 0.3) transparent;
+  outline: none;
+  -webkit-overflow-scrolling: touch;
+  transition: background-color 0.4s var(--ease-smooth);
 }
-.wt-scroller::-webkit-scrollbar { display: none; }
+.wt-scroller::-webkit-scrollbar { width: 6px; }
+.wt-scroller::-webkit-scrollbar-track { background: transparent; }
+.wt-scroller::-webkit-scrollbar-thumb { background: rgba(200, 169, 126, 0.25); border-radius: 4px; }
 .wt-scroller.is-locked { overflow: hidden; }
-.wt-track { width: 1px; }
+
+/* In profile mode, give the scroller a 100% solid, impenetrable deep background */
+.wt-root.is-in-profile .wt-scroller {
+  background: #06070a;
+}
+
+.wt-track {
+  position: relative;
+  width: 100%;
+  pointer-events: none;
+}
+
+.wt-track-transition-cue {
+  position: absolute;
+  bottom: clamp(30px, 6vh, 60px);
+  inset-inline: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  text-align: center;
+  padding: 0 20px;
+  pointer-events: none;
+}
+.wt-track-transition-cue p {
+  font-family: var(--font-display);
+  font-size: clamp(0.95rem, 1.4vw, 1.15rem);
+  font-weight: 600;
+  color: #f0f2f8;
+  letter-spacing: 0.04em;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.95);
+  max-width: 44ch;
+}
+
+/* ---------- Profile Entry Curtain ---------- */
+.wt-profile-entry-curtain {
+  position: relative;
+  width: 100%;
+  height: clamp(80px, 12vh, 140px);
+  background: linear-gradient(180deg, transparent 0%, rgba(6, 7, 10, 0.75) 45%, #06070a 100%);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 12px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.wt-curtain-glow-line {
+  width: min(92%, 1280px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(200, 169, 126, 0.2) 20%, var(--gold-primary) 50%, rgba(200, 169, 126, 0.2) 80%, transparent 100%);
+  box-shadow: 0 0 16px rgba(200, 169, 126, 0.45);
+}
 
 .wt-vignette {
-  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
   background:
     radial-gradient(ellipse at center, transparent 58%, rgba(3, 4, 6, 0.55) 100%),
     linear-gradient(to bottom, rgba(4, 5, 8, 0.55) 0%, transparent 16%, transparent 78%, rgba(4, 5, 8, 0.7) 100%);
+  transition: opacity 0.6s var(--ease-smooth);
+}
+.wt-vignette.is-faded {
+  opacity: 0.35;
 }
 
 /* ---------- top bar ---------- */
 .wt-topbar {
-  position: absolute; top: 0; inset-inline: 0; z-index: 8;
+  position: absolute; top: 0; inset-inline: 0; z-index: 20;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: clamp(14px, 2.4vh, 24px) clamp(16px, 3.4vw, 48px);
   pointer-events: none;
+  background: linear-gradient(180deg, rgba(5, 6, 8, 0.75) 0%, transparent 100%);
 }
 .wt-topbar > * { pointer-events: auto; }
-.wt-brand { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.wt-brand { display: flex; flex-direction: column; gap: 3px; min-width: 0; cursor: pointer; }
 .wt-brand-code { font-family: var(--font-serif); font-size: 0.64rem; letter-spacing: 0.22em; color: var(--gold-primary); opacity: 0.85; }
 .wt-brand strong { font-family: var(--font-display); font-size: clamp(0.9rem, 1.4vw, 1.1rem); font-weight: 700; text-shadow: 0 2px 14px rgba(0,0,0,0.8); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw; }
 .wt-actions { display: flex; align-items: center; gap: 10px; }
 
 .wt-pill, .wt-close {
   display: inline-flex; align-items: center; gap: 8px;
-  background: rgba(12, 14, 19, 0.7); border: 1px solid var(--border-subtle); color: var(--text-secondary);
+  background: rgba(12, 14, 19, 0.75); border: 1px solid var(--border-subtle); color: var(--text-secondary);
   font-size: 0.78rem; letter-spacing: 0.06em; padding: 9px 16px; border-radius: var(--radius-full);
-  cursor: pointer; backdrop-filter: blur(12px); transition: all 0.3s var(--ease-expo); font-family: inherit;
+  cursor: pointer; backdrop-filter: blur(14px); transition: all 0.3s var(--ease-expo); font-family: inherit;
 }
-.wt-pill:hover, .wt-pill.is-on { border-color: var(--border-gold); color: var(--gold-light); background: rgba(200, 169, 126, 0.14); }
+.wt-pill:hover, .wt-pill.is-on, .wt-pill.is-active-tab {
+  border-color: var(--border-gold);
+  color: var(--gold-light);
+  background: rgba(200, 169, 126, 0.18);
+  box-shadow: 0 0 14px rgba(200, 169, 126, 0.15);
+}
 .wt-close { color: var(--text-primary); border-color: var(--border-gold); background: rgba(200, 169, 126, 0.16); }
 .wt-close:hover { background: var(--gold-primary); color: #0b0c10; transform: translateY(-1px); }
 
