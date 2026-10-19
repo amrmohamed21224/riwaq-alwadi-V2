@@ -105,7 +105,7 @@ export const HOTSPOTS = [
 ];
 
 /* ---------- Scene Builder ---------- */
-export function buildVilla(scene, projectTextures, renderer) {
+export function buildVilla(scene, projectTextures, renderer, quality = { shadows: false, tier: 0, reflections: false }) {
   const disposables = [];
   const add = (o) => {
     scene.add(o);
@@ -113,7 +113,7 @@ export function buildVilla(scene, projectTextures, renderer) {
     return o;
   };
 
-  const kit = createKit({ scene, disposables });
+  const kit = createKit({ scene, disposables, quality });
 
   // 1. Procedural PBR Physical Materials
   const marbleTex = tex.marble({ base: 0x0f1115, vein: 0xd6b478, sharp: 14, scale: 3.5, polish: 0.12, tilesX: 2, tilesY: 2 });
@@ -157,7 +157,7 @@ export function buildVilla(scene, projectTextures, renderer) {
   add(sky);
 
   // Cool twilight moonlight casting soft architectural shadows
-  const moonLight = kit.sun(-35, 55, 30, 0x9eb8ff, 0.8, { shadow: true, size: 45, shadowMap: 2048 });
+  const moonLight = kit.sun(-35, 55, 30, 0x9eb8ff, 0.8, { shadow: !!quality.shadows, size: 45, shadowMap: 1024 });
 
   // 3. Desert Ground & Surrounding Wadi Hanifa Canyon Cliffs
   kit.plane(800, 800, 0, -0.6, 0, kit.mat(null, { color: 0x0a0c10, roughness: 1 }));

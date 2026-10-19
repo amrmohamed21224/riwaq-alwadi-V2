@@ -5,7 +5,7 @@
 
 .immersive-intro {
   position: relative;
-  height: 900vh;
+  height: 320vh;
   background: var(--bg-primary);
   contain: paint;
 }
@@ -41,8 +41,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
-  will-change: opacity, transform;
+  opacity: var(--hero-opacity, 1);
+  will-change: opacity;
 }
 
 .hero-photomask-img {
@@ -53,6 +53,7 @@
   object-fit: cover;
   object-position: center;
   transform-origin: 50% 50%;
+  transform: scale(var(--hero-zoom, 1));
   will-change: transform;
 }
 
@@ -382,9 +383,11 @@ html[dir="ltr"] .hero-title-sub {
    -------------------------------------------------------------------------- */
 .imm-hotspot-marker {
   position: absolute;
+  top: 0;
+  left: 0;
   z-index: 5;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
+  pointer-events: none;
+  opacity: 0;
 }
 
 .imm-hotspot-pin {
@@ -653,7 +656,18 @@ html[dir="ltr"] .hero-title-sub {
 /* --------------------------------------------------------------------------
    SIDE PROGRESS RAIL
    -------------------------------------------------------------------------- */
+.immersive-chapters-stage.is-ending .imm-chapter-card,
+.immersive-chapters-stage.is-ending .imm-chapter-card.is-active {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.imm-progress-rail.is-on {
+  visibility: visible;
+}
+
 .imm-progress-rail {
+  visibility: hidden;
   position: absolute;
   inset-inline-end: clamp(16px, 3vw, 42px);
   top: 50%;

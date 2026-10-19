@@ -53,6 +53,7 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   const [sound, setSound] = useState(false);
   const [started, setStarted] = useState(false);
   const [isPastWalkthrough, setIsPastWalkthrough] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
 
   /* lock page scroll while open + Esc to close */
   useEffect(() => {
@@ -155,47 +156,54 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
     };
   }, [project.id]);
 
-  /* scroll -> camera progress mapped to 3D track */
+  /* scroll listener only flags a change; progress is applied on the next frame */
   useEffect(() => {
     if (!ready) return undefined;
     const sc = scrollerRef.current;
     const track = trackRef.current;
     let wasPast = false;
+    let startedOnce = false;
+    let profileOnce = false;
+    let scheduled = false;
 
-    const onScroll = () => {
+    const apply = () => {
       if (!sc) return;
       const trackDistance = track ? track.offsetHeight - window.innerHeight : window.innerHeight * 5;
       const effectiveDist = Math.max(trackDistance, 1);
-      const rawProgress = sc.scrollTop / effectiveDist;
-      const p = clamp(rawProgress, 0, 1);
-
-      // Determine whether user has entered the dedicated profile section
+      const p = clamp(sc.scrollTop / effectiveDist, 0, 1);
       const past = sc.scrollTop >= effectiveDist - 30;
-      setIsPastWalkthrough(past);
 
-      // CRITICAL PERFORMANCE: Pause 3D WebGL engine when in profile mode to free 100% GPU/CPU
-      if (engineRef.current) {
-        if (past && !wasPast) {
-          wasPast = true;
-          engineRef.current.setVisible(false);
-        } else if (!past && wasPast) {
-          wasPast = false;
-          engineRef.current.setVisible(true);
-        }
-
-        // Only compute 3D camera progression when actively in 3D walkthrough
-        if (!past) {
-          engineRef.current.setProgress(p);
-        }
+      if (past !== wasPast) {
+        wasPast = past;
+        setIsPastWalkthrough(past);
+        if (engineRef.current) engineRef.current.setVisible(!past);
       }
+      if (!past && engineRef.current) engineRef.current.setProgress(p);
 
       if (pctRef.current) pctRef.current.textContent = String(Math.round(p * 100)).padStart(2, '0');
       if (railRef.current) railRef.current.style.height = `${p * 100}%`;
 
-      if (p > 0.012) setStarted(true);
+      if (!startedOnce && p > 0.012) {
+        startedOnce = true;
+        setStarted(true);
+      }
+      if (!profileOnce && p > 0.88) {
+        profileOnce = true;
+        setProfileReady(true);
+      }
     };
 
-    onScroll();
+    const pump = () => {
+      scheduled = false;
+      apply();
+    };
+    const onScroll = () => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(pump);
+    };
+
+    apply();
     sc.addEventListener('scroll', onScroll, { passive: true });
     return () => sc.removeEventListener('scroll', onScroll);
   }, [ready]);
@@ -232,13 +240,18 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
   };
 
   const scrollToProfile = () => {
-    const el = document.getElementById('project-profile-root');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      const trackDistance = trackRef.current ? trackRef.current.offsetHeight - window.innerHeight : window.innerHeight * 5;
-      scrollerRef.current?.scrollTo({ top: trackDistance + 20, behavior: 'smooth' });
-    }
+    setProfileReady(true);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById('project-profile-root');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          const trackDistance = trackRef.current ? trackRef.current.offsetHeight - window.innerHeight : window.innerHeight * 5;
+          scrollerRef.current?.scrollTo({ top: trackDistance + 20, behavior: 'smooth' });
+        }
+      });
+    });
   };
 
   const scrollToBlueprint = () => {
@@ -313,13 +326,15 @@ export default function ProjectWalkthrough({ project, lang, onClose }) {
         </div>
 
         {/* 2. Seamless Dedicated Project Monograph & CAD Blueprint Section */}
-        {ready && (
-          <ProjectProfileDetail
-            project={project}
-            lang={lang}
-            onBackToTop={scrollToTop}
-            onClose={onClose}
-          />
+        {ready && profileReady && (
+          <div className="wt-profile-slot">
+            <ProjectProfileDetail
+              project={project}
+              lang={lang}
+              onBackToTop={scrollToTop}
+              onClose={onClose}
+            />
+          </div>
         )}
       </div>
 

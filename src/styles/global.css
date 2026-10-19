@@ -100,7 +100,7 @@ img {
   }
 }
 
-/* Film Grain Texture for Luxury Awwwards Feel */
+/* Static grain tile — a bitmap, not an SVG turbulence filter */
 .film-grain {
   position: fixed;
   top: 0;
@@ -109,8 +109,10 @@ img {
   height: 100vh;
   pointer-events: none;
   z-index: 999;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.045;
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAArUlEQVR4nHWTUQ4EIQhDewjuH0/nOTZuhJSH80EwMrZQOooI7b1PrIyIOKEb69bl9cy6B/+wAAw0zwlatVdhdGNZ1t0/yxheLQ7AJGMH9ejBwhGWhWQPWyfJbnoIo6gAiPoCwghFJlx+gkGXAiOLyEBfcEOyWRuIgfHcCBuAs/gI9IgL6T6gQN5225brMSzsQj7MxW1MEfkDwSckE80y2D980dbIHbuVhdYb2Mk/4D4Cz6iN0BUAAAAASUVORK5CYII=");
+  background-size: 96px 96px;
+  mix-blend-mode: overlay;
 }
 
 /* Luxury Ambient Background Glows */

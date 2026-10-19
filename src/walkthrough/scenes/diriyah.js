@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSkyDome, createWater, createFlame, createParticles } from '../fx';
 
 export default {
-  scroll: 840,
+  scroll: 340,
   exposure: 1.06,
   background: 0x06070b,
   fog: { color: 0x0d0b12, density: 0.007 },

@@ -167,13 +167,6 @@ export function createKit(ctx) {
     l.position.set(x, y, z);
     (o.parent || scene).add(l);
     ctx.lights.push({ light: l, base: intensity, range: o.range, flicker: o.flicker });
-    if (o.shadow && ctx.quality.shadows) {
-      l.castShadow = true;
-      l.shadow.mapSize.set(o.shadowMap || 1024, o.shadowMap || 1024);
-      l.shadow.bias = -0.0008;
-      l.shadow.normalBias = 0.03;
-      l.shadow.radius = 4;
-    }
     return l;
   }
 
@@ -184,13 +177,6 @@ export function createKit(ctx) {
     scene.add(l);
     scene.add(l.target);
     ctx.lights.push({ light: l, base: intensity, range: o.range, flicker: o.flicker });
-    if (o.shadow && ctx.quality.shadows) {
-      l.castShadow = true;
-      l.shadow.mapSize.set(o.shadowMap || 1024, o.shadowMap || 1024);
-      l.shadow.bias = -0.0004;
-      l.shadow.normalBias = 0.02;
-      l.shadow.radius = 5;
-    }
     return l;
   }
 
@@ -201,7 +187,7 @@ export function createKit(ctx) {
     scene.add(l);
     scene.add(l.target);
     ctx.lights.push({ light: l, base: intensity });
-    if (ctx.quality.shadows) {
+    if (o.shadow && ctx.quality.shadows) {
       l.castShadow = true;
       const s = o.size || 30;
       l.shadow.camera.left = -s;
@@ -210,10 +196,10 @@ export function createKit(ctx) {
       l.shadow.camera.bottom = -s;
       l.shadow.camera.near = o.near || 1;
       l.shadow.camera.far = o.far || 160;
-      l.shadow.mapSize.set(o.shadowMap || 2048, o.shadowMap || 2048);
+      l.shadow.mapSize.set(1024, 1024);
       l.shadow.bias = -0.0005;
       l.shadow.normalBias = 0.04;
-      l.shadow.radius = 3;
+      l.shadow.radius = 2;
     }
     return l;
   }

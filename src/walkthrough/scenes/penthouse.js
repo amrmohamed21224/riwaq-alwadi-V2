@@ -3,7 +3,7 @@ import { createFlame, createParticles, createLightPool } from '../fx';
 import { skyline } from '../textures';
 
 export default {
-  scroll: 850,
+  scroll: 340,
   exposure: 1.08,
   background: 0x07090e,
   fog: { color: 0x090c14, density: 0.005 },

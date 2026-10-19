@@ -2,6 +2,15 @@ import * as THREE from 'three';
 import { Reflector } from 'three/examples/jsm/objects/Reflector.js';
 import { radial } from './textures';
 
+let activeQuality = { tier: 0, reflections: false };
+let reflectBudget = 0;
+
+/** Called once before a scene is built so water picks the right technique. */
+export function beginFxScene(quality) {
+  activeQuality = quality || { tier: 0, reflections: false };
+  reflectBudget = activeQuality.reflections && activeQuality.tier >= 2 ? 1 : 0;
+}
+
 /* =========================================================================
    Planar reflection surfaces
    ========================================================================= */
@@ -70,6 +79,24 @@ void main() {
   gl_FragColor = vec4(refl.rgb * color, a);
 }`;
 
+function createCheapWater({ w, d, shape, geometry, deep, color }) {
+  const geo = geometry || shape || new THREE.PlaneGeometry(w, d);
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: new THREE.Color(deep).lerp(new THREE.Color(color), 0.18),
+    roughness: 0.06,
+    metalness: 0.22,
+    transparent: true,
+    opacity: 0.94,
+    envMapIntensity: 1.35,
+    clearcoat: 1,
+    clearcoatRoughness: 0.08,
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
 export function createWater({
   w = 10,
   d = 10,
@@ -78,16 +105,20 @@ export function createWater({
   deep = 0x03131a,
   reflectivity = 0.62,
   ripple = 0.004,
-  res = 0.5,
-  blur = 0.0008,
+  res = 0.35,
+  blur = 0,
   geometry = null,
 } = {}) {
+  if (reflectBudget <= 0) {
+    return createCheapWater({ w, d, shape, geometry, deep, color });
+  }
+  reflectBudget -= 1;
   const geo = geometry || shape || new THREE.PlaneGeometry(w, d);
   const refl = new Reflector(geo, {
-    textureWidth: Math.floor(window.innerWidth * res),
-    textureHeight: Math.floor(window.innerHeight * res),
+    textureWidth: Math.max(256, Math.floor(window.innerWidth * res)),
+    textureHeight: Math.max(256, Math.floor(window.innerHeight * res)),
     clipBias: 0.002,
-    multisample: 2,
+    multisample: 0,
     shader: {
       name: 'WaterShader',
       uniforms: {

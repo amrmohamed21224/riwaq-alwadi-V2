@@ -6,6 +6,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import * as TEX from './textures';
 import { createKit } from './kit';
+import { beginFxScene } from './fx';
 
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
@@ -88,7 +89,14 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   }
 
   const tier0 = detectTier();
-  const quality = { tier: tier0, shadows: tier0 >= 1, bloom: tier0 >= 1, reflections: tier0 >= 1, dpr: [1, 1.25, 1.75][tier0], texSize: tier0 >= 2 ? 768 : 512 };
+  const quality = {
+    tier: tier0,
+    shadows: tier0 >= 1,
+    bloom: tier0 >= 2,
+    reflections: tier0 >= 2,
+    dpr: [1, 1.15, 1.35][tier0],
+    texSize: tier0 >= 2 ? 512 : 384,
+  };
   TEX.setTextureSize(quality.texSize);
 
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.dpr));
@@ -96,7 +104,7 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = def.exposure ?? 1;
   renderer.shadowMap.enabled = quality.shadows;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(def.background ?? 0x07080b);
@@ -152,17 +160,25 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
 
   // ---------- build the scene ----------
   await ctx.tick(0.04, 'init');
+  beginFxScene(quality);
   await def.build(ctx);
   await ctx.tick(0.9, 'compile');
 
   // ---------- post processing ----------
   const size = new THREE.Vector2();
   renderer.getDrawingBufferSize(size);
-  const rtTarget = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: quality.tier >= 1 ? 4 : 0 });
+  const rtParams = { samples: 0 };
+  if (quality.bloom) rtParams.type = THREE.HalfFloatType;
+  const rtTarget = new THREE.WebGLRenderTarget(size.x, size.y, rtParams);
   const composer = new EffectComposer(renderer, rtTarget);
   composer.addPass(new RenderPass(scene, camera));
   const b = def.bloom || { strength: 0.35, radius: 0.5, threshold: 0.9 };
-  const bloom = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), b.strength, b.radius, b.threshold);
+  const bloom = new UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth, window.innerHeight),
+    (b.strength ?? 0.35) * 0.72,
+    b.radius,
+    Math.max(b.threshold ?? 0.9, 0.9),
+  );
   bloom.enabled = quality.bloom;
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -225,13 +241,10 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   function degrade() {
     if (quality.tier <= 0) return;
     quality.tier -= 1;
-    quality.dpr = [1, 1.25, 1.75][quality.tier];
-    if (quality.tier === 1) quality.reflections = true;
-    if (quality.tier === 0) {
-      quality.shadows = false;
-      quality.reflections = false;
-      quality.bloom = false;
-    }
+    quality.dpr = [1, 1.15, 1.35][quality.tier];
+    quality.bloom = quality.tier >= 2;
+    quality.shadows = quality.tier >= 1;
+    quality.reflections = quality.tier >= 2;
     applyQuality();
   }
 
@@ -246,12 +259,12 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
     // adaptive quality
     if (dt > 0.034) slow++;
     else slow = Math.max(0, slow - 2);
-    if (slow > 80) {
+    if (slow > 20) {
       slow = 0;
       degrade();
     }
 
-    current += (target - current) * (1 - Math.pow(0.0009, dt));
+    current += (target - current) * (1 - Math.exp(-dt / 0.09));
     mouse.sx += (mouse.x - mouse.sx) * (1 - Math.pow(0.02, dt));
     mouse.sy += (mouse.y - mouse.sy) * (1 - Math.pow(0.02, dt));
 

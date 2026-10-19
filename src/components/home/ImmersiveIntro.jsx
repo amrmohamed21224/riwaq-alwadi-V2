@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useSoundscape } from '../../context/SoundscapeContext';
 import { buildVilla, createCameraRig, HOTSPOTS } from './villaScene';
+import { beginFxScene } from '../../walkthrough/fx';
 import './ImmersiveIntro.css';
 
 const CHAPTERS = [
@@ -102,15 +103,17 @@ export default function ImmersiveIntro({ lang }) {
   const isAr = lang === 'ar';
   const sectionRef = useRef(null);
   const canvasRef = useRef(null);
+  const heroMaskRef = useRef(null);
+  const railRef = useRef(null);
+  const railFillRef = useRef(null);
+  const railNumRef = useRef(null);
+  const dockRef = useRef(null);
+  const chapterStageRef = useRef(null);
+  const hotRefs = useRef({});
   const { isSoundPlaying, toggleAmbientSound } = useSoundscape();
 
   const [activeChapterIdx, setActiveChapterIdx] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const [heroOpacity, setHeroOpacity] = useState(1);
-  const [heroZoom, setHeroZoom] = useState(1);
-  const [heroFade, setHeroFade] = useState(0);
   const [activeHotspot, setActiveHotspot] = useState(null);
-  const [visibleHotspots, setVisibleHotspots] = useState([]);
 
   // Scroll to room
   const scrollToChapter = (targetScroll) => {
@@ -135,19 +138,27 @@ export default function ImmersiveIntro({ lang }) {
     try {
       renderer = new THREE.WebGLRenderer({
         canvas,
-        antialias: true,
+        antialias: false,
         powerPreference: 'high-performance',
+        alpha: false,
       });
     } catch {
       return;
     }
 
     const isMobile = window.innerWidth < 800;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.25 : 1.6));
+    const introTier = window.innerWidth < 1100 ? 0 : (navigator.hardwareConcurrency || 4) <= 4 ? 1 : 2;
+    const introQuality = {
+      tier: introTier,
+      shadows: introTier >= 1,
+      bloom: introTier >= 2,
+      reflections: introTier >= 2,
+    };
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, introTier === 0 ? 1 : 1.25));
     renderer.setSize(window.innerWidth, window.innerHeight, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = introQuality.shadows;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
@@ -159,17 +170,20 @@ export default function ImmersiveIntro({ lang }) {
     );
     const rig = createCameraRig();
 
-    // Post-processing Bloom
-    const composer = new EffectComposer(renderer);
-    composer.addPass(new RenderPass(scene, camera));
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.32, // Refined luxury bloom strength
-      0.44, // Soft radius
-      0.88, // Only glow warmest emissive accents (fire, cove LEDs, brass)
-    );
-    composer.addPass(bloomPass);
-    composer.addPass(new OutputPass());
+    // Bloom only on wide, capable screens, and at half resolution
+    let composer = null;
+    if (introQuality.bloom) {
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.22,
+        0.4,
+        0.9,
+      );
+      composer.addPass(bloomPass);
+      composer.addPass(new OutputPass());
+    }
 
     // Textures loader
     let villa = null;
@@ -186,7 +200,8 @@ export default function ImmersiveIntro({ lang }) {
       return tex;
     });
 
-    villa = buildVilla(scene, projectTextures, renderer);
+    beginFxScene(introQuality);
+    villa = buildVilla(scene, projectTextures, renderer, introQuality);
 
     // Scroll & Mouse Tracking
     let targetProgress = 0;
@@ -209,7 +224,7 @@ export default function ImmersiveIntro({ lang }) {
 
     const handleResize = () => {
       renderer.setSize(window.innerWidth, window.innerHeight, false);
-      composer.setSize(window.innerWidth, window.innerHeight);
+      if (composer) composer.setSize(window.innerWidth, window.innerHeight);
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.fov = window.innerWidth < 800 ? 70 : 56;
       camera.updateProjectionMatrix();
@@ -219,58 +234,76 @@ export default function ImmersiveIntro({ lang }) {
     window.addEventListener('pointermove', handlePointerMove, { passive: true });
     window.addEventListener('resize', handleResize);
 
-    // Visibility Observer
+    // Visibility Observer — pause the loop when the intro leaves the screen or a project tour opens
     let isVisible = true;
+    let walkthroughOpen = document.documentElement.classList.contains('wt-open');
+    let looping = false;
+    let animId = 0;
     const observer = new IntersectionObserver(([entry]) => {
       isVisible = entry.isIntersecting;
+      syncLoop();
     });
     observer.observe(section);
+    const classObserver = new MutationObserver(() => {
+      walkthroughOpen = document.documentElement.classList.contains('wt-open');
+      syncLoop();
+    });
+    classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
 
     const startTime = performance.now();
+    let lastTick = startTime;
     const tempLookAt = new THREE.Vector3();
-    let animId = 0;
     let lastChapter = -1;
-
     const tempScreenPos = new THREE.Vector3();
 
     const tick = () => {
+      if (!looping) return;
       animId = requestAnimationFrame(tick);
-      if (!isVisible) return;
+      if (!isVisible || walkthroughOpen) return;
 
-      const time = (performance.now() - startTime) * 0.001;
+      const now = performance.now();
+      const dt = Math.min((now - lastTick) / 1000, 0.05);
+      lastTick = now;
+      const time = (now - startTime) * 0.001;
 
-      // Smooth camera interpolation
-      currentProgress += (targetProgress - currentProgress) * 0.055;
+      currentProgress += (targetProgress - currentProgress) * (1 - Math.exp(-dt / 0.09));
       mouse.sx += (mouse.x - mouse.sx) * 0.045;
       mouse.sy += (mouse.y - mouse.sy) * 0.045;
 
       const { position, target: lookTarget } = rig.at(currentProgress);
       camera.position.copy(position);
 
-      // Subtle natural breathing / walking dynamics
       const isWalking = currentProgress > 0.15 && currentProgress < 0.88;
       if (isWalking) {
         camera.position.y += Math.sin(time * 1.8) * 0.012;
       }
 
-      // Parallax look-around with mouse
       tempLookAt.copy(lookTarget);
       tempLookAt.x += mouse.sx * 1.5;
       tempLookAt.y -= mouse.sy * 0.8;
       camera.lookAt(tempLookAt);
 
-      // Update animated elements
       villa.update(time);
-      composer.render();
+      if (composer) composer.render();
+      else renderer.render(scene, camera);
 
-      // Hero image zoom & crossfade calculation (0 -> 0.14)
       const heroFadeProgress = clamp(currentProgress / 0.12, 0, 1);
-      setHeroOpacity(1 - heroFadeProgress);
-      setHeroZoom(1 + heroFadeProgress * 0.28);
-      setHeroFade(heroFadeProgress);
-      setScrollProgress(Math.round(currentProgress * 100));
+      const mask = heroMaskRef.current;
+      if (mask) {
+        mask.style.setProperty('--hero-opacity', String(1 - heroFadeProgress));
+        mask.style.setProperty('--hero-zoom', String(1 + heroFadeProgress * 0.28));
+        mask.style.setProperty('--hero-fade', String(heroFadeProgress));
+        mask.style.pointerEvents = heroFadeProgress < 0.95 ? 'auto' : 'none';
+        mask.style.visibility = heroFadeProgress >= 0.99 ? 'hidden' : 'visible';
+      }
 
-      // Calculate active chapter
+      const pct = Math.round(currentProgress * 100);
+      if (railFillRef.current) railFillRef.current.style.height = `${pct}%`;
+      if (railNumRef.current) railNumRef.current.textContent = String(pct).padStart(2, '0');
+      if (railRef.current) railRef.current.classList.toggle('is-on', pct > 3);
+      if (dockRef.current) dockRef.current.classList.toggle('is-faded', pct >= 97);
+      if (chapterStageRef.current) chapterStageRef.current.classList.toggle('is-ending', pct >= 97);
+
       let currentChIdx = 0;
       for (let i = 0; i < CHAPTERS.length; i++) {
         if (currentProgress >= CHAPTERS[i].start && currentProgress <= CHAPTERS[i].end) {
@@ -283,39 +316,58 @@ export default function ImmersiveIntro({ lang }) {
         setActiveChapterIdx(currentChIdx);
       }
 
-      // Calculate screen positions for active 3D Hotspots
-      const activeSpots = [];
       HOTSPOTS.forEach((spot) => {
-        if (currentProgress >= spot.tRange[0] && currentProgress <= spot.tRange[1]) {
-          tempScreenPos.set(...spot.worldPos);
-          tempScreenPos.project(camera);
-          // Check if in front of camera
-          if (tempScreenPos.z < 1) {
-            const x = (tempScreenPos.x * 0.5 + 0.5) * window.innerWidth;
-            const y = (-(tempScreenPos.y * 0.5) + 0.5) * window.innerHeight;
-            activeSpots.push({ ...spot, screenX: x, screenY: y });
-          }
+        const el = hotRefs.current[spot.id];
+        if (!el) return;
+        const inRange = currentProgress >= spot.tRange[0] && currentProgress <= spot.tRange[1];
+        if (!inRange) {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          return;
         }
+        tempScreenPos.set(...spot.worldPos);
+        tempScreenPos.project(camera);
+        if (tempScreenPos.z >= 1) {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          return;
+        }
+        const x = (tempScreenPos.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-(tempScreenPos.y * 0.5) + 0.5) * window.innerHeight;
+        el.style.opacity = '1';
+        el.style.pointerEvents = 'auto';
+        el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
       });
-      setVisibleHotspots(activeSpots);
     };
-    tick();
+
+    function syncLoop() {
+      const should = isVisible && !walkthroughOpen;
+      if (should && !looping) {
+        looping = true;
+        lastTick = performance.now();
+        animId = requestAnimationFrame(tick);
+      } else if (!should && looping) {
+        looping = false;
+        cancelAnimationFrame(animId);
+      }
+    }
+    syncLoop();
 
     return () => {
       disposed = true;
+      looping = false;
       cancelAnimationFrame(animId);
       observer.disconnect();
+      classObserver.disconnect();
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('pointermove', handlePointerMove);
       window.removeEventListener('resize', handleResize);
       villa && villa.dispose();
       projectTextures.forEach((t) => t.dispose());
-      composer.dispose();
+      if (composer) composer.dispose();
       renderer.dispose();
     };
   }, []);
-
-  const activeChapter = CHAPTERS[activeChapterIdx] || CHAPTERS[0];
 
   return (
     <section
@@ -328,20 +380,11 @@ export default function ImmersiveIntro({ lang }) {
         <canvas ref={canvasRef} className="immersive-canvas" />
 
         {/* Cinematic Hero Photograph Overlay (Seamless Morph Layer) */}
-        <div
-          className="hero-photomask"
-          style={{
-            opacity: heroOpacity,
-            pointerEvents: heroOpacity > 0.05 ? 'auto' : 'none',
-            visibility: heroOpacity <= 0.01 ? 'hidden' : 'visible',
-            '--hero-fade': heroFade,
-          }}
-        >
+        <div ref={heroMaskRef} className="hero-photomask">
           <img
             src="/images/hero.jpg"
             alt="Riwaq Al-Wadi Architectural Masterpiece"
             className="hero-photomask-img"
-            style={{ transform: `scale(${heroZoom})` }}
           />
           <div className="hero-photomask-gradient" />
           <div className="hero-photomask-vignette" />
@@ -433,15 +476,14 @@ export default function ImmersiveIntro({ lang }) {
         {/* Vignette & Ambient Rim for 3D View */}
         <div className="immersive-vignette" aria-hidden="true" />
 
-        {/* Floating 3D Hotspots */}
-        {visibleHotspots.map((spot) => (
+        {/* Floating 3D Hotspots — positions are written from the render loop */}
+        {HOTSPOTS.map((spot) => (
           <div
             key={spot.id}
-            className="imm-hotspot-marker"
-            style={{
-              left: `${spot.screenX}px`,
-              top: `${spot.screenY}px`,
+            ref={(el) => {
+              hotRefs.current[spot.id] = el;
             }}
+            className="imm-hotspot-marker"
           >
             <button
               onClick={() => setActiveHotspot(activeHotspot?.id === spot.id ? null : spot)}
@@ -471,10 +513,10 @@ export default function ImmersiveIntro({ lang }) {
         ))}
 
         {/* 3D Walkthrough Chapter Descriptions */}
-        <div className="immersive-chapters-stage" aria-live="polite">
+        <div ref={chapterStageRef} className="immersive-chapters-stage" aria-live="polite">
           {CHAPTERS.map((ch, idx) => {
             if (ch.isHero) return null;
-            const isCurrent = activeChapterIdx === idx && heroOpacity < 0.3 && scrollProgress < 97;
+            const isCurrent = activeChapterIdx === idx;
             return (
               <div
                 key={ch.id}
@@ -504,7 +546,7 @@ export default function ImmersiveIntro({ lang }) {
         </div>
 
         {/* Bottom Interactive Room Dock */}
-        <div className={`imm-dock-container ${scrollProgress >= 97 ? 'is-faded' : ''}`}>
+        <div ref={dockRef} className="imm-dock-container">
           <nav className="imm-dock glass-card" aria-label="Room navigation">
             <span className="imm-dock-label">
               <Eye size={13} />
@@ -529,18 +571,17 @@ export default function ImmersiveIntro({ lang }) {
           </nav>
         </div>
 
-        {/* Side Progress Rail (Visible only after beginning walkthrough) */}
-        {scrollProgress > 3 && (
-          <div className="imm-progress-rail">
-            <div className="imm-rail-track">
-              <div className="imm-rail-indicator" style={{ height: `${scrollProgress}%` }} />
-            </div>
-            <div className="imm-rail-meta">
-              <span className="imm-rail-num">{String(scrollProgress).padStart(2, '0')}%</span>
-              <span className="imm-rail-tag">{isAr ? 'العمق المعماري' : 'DEPTH'}</span>
-            </div>
+        <div ref={railRef} className="imm-progress-rail">
+          <div className="imm-rail-track">
+            <div ref={railFillRef} className="imm-rail-indicator" />
           </div>
-        )}
+          <div className="imm-rail-meta">
+            <span className="imm-rail-num">
+              <span ref={railNumRef}>00</span>%
+            </span>
+            <span className="imm-rail-tag">{isAr ? 'العمق المعماري' : 'DEPTH'}</span>
+          </div>
+        </div>
       </div>
     </section>
   );

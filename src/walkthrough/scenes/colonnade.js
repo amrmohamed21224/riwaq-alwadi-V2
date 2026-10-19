@@ -3,7 +3,7 @@ import { createSkyDome, createWater, createParticles, createHalo } from '../fx';
 import { lattice } from '../textures';
 
 export default {
-  scroll: 850,
+  scroll: 340,
   exposure: 1.06,
   background: 0x07080d,
   fog: { color: 0x0d0c14, density: 0.007 },

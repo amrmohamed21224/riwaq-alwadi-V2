@@ -3,7 +3,7 @@ import { createSkyDome, createWater, createLightShaft, createParticles, createHa
 import { domeOrnament, lattice } from '../textures';
 
 export default {
-  scroll: 820,
+  scroll: 340,
   exposure: 1.1,
   background: 0x080a0e,
   fog: { color: 0x120d09, density: 0.009 },

@@ -39,8 +39,7 @@
   transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1),
               height 0.25s cubic-bezier(0.16, 1, 0.3, 1),
               background-color 0.25s ease,
-              border-color 0.25s ease,
-              transform 0.06s linear;
+              border-color 0.25s ease;
 }
 
 .cursor-dot.hovered {
@@ -55,6 +54,10 @@
   background-color: rgba(200, 169, 126, 0.12);
   border-color: var(--gold-primary);
   box-shadow: 0 0 20px rgba(200, 169, 126, 0.25);
+}
+
+html.wt-open .custom-cursor-wrap {
+  display: none;
 }
 
 @media (pointer: coarse) {

@@ -63,6 +63,11 @@
   pointer-events: none;
 }
 
+.wt-profile-slot {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2800px;
+}
+
 .wt-track-transition-cue {
   position: absolute;
   bottom: clamp(30px, 6vh, 60px);
