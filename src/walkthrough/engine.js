@@ -1,50 +1,10 @@
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import * as TEX from './textures';
 import { createKit } from './kit';
 import { beginFxScene } from './fx';
 
 const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
 const nextPaint = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
-
-/** Cinematic grade: soft S-curve, vignette, film grain, edge chromatic aberration */
-const GradeShader = {
-  uniforms: {
-    tDiffuse: { value: null },
-    time: { value: 0 },
-    vignette: { value: 0.42 },
-    grain: { value: 0.035 },
-    warmth: { value: new THREE.Vector3(1.02, 1.0, 0.97) },
-    contrast: { value: 1.06 },
-    saturation: { value: 1.06 },
-    aberration: { value: 0.0016 },
-  },
-  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: `
-    uniform sampler2D tDiffuse; uniform float time, vignette, grain, contrast, saturation, aberration; uniform vec3 warmth;
-    varying vec2 vUv;
-    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)) + time) * 43758.5453); }
-    void main(){
-      vec2 c = vUv - 0.5;
-      float r2 = dot(c,c);
-      vec2 off = c * r2 * aberration * 6.0;
-      vec3 col;
-      col.r = texture2D(tDiffuse, vUv + off).r;
-      col.g = texture2D(tDiffuse, vUv).g;
-      col.b = texture2D(tDiffuse, vUv - off).b;
-      col *= warmth;
-      float l = dot(col, vec3(0.2126,0.7152,0.0722));
-      col = mix(vec3(l), col, saturation);
-      col = (col - 0.5) * contrast + 0.5;
-      col *= 1.0 - vignette * smoothstep(0.18, 0.95, r2 * 2.2);
-      col += (hash(vUv * 1024.0) - 0.5) * grain;
-      gl_FragColor = vec4(max(col, 0.0), 1.0);
-    }`,
-};
 
 /** Build a tiny HDR "studio" scene used for image based lighting */
 export function buildEnvScene({ top = 0x1a2340, horizon = 0x8a5a4a, ground = 0x15110e, panels = [] } = {}) {
@@ -91,19 +51,20 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   const tier0 = detectTier();
   const quality = {
     tier: tier0,
-    shadows: tier0 >= 1,
-    bloom: tier0 >= 2,
-    reflections: tier0 >= 2,
-    dpr: [1, 1.15, 1.35][tier0],
-    texSize: tier0 >= 2 ? 512 : 384,
+    shadows: false,
+    bloom: false,
+    reflections: false,
+    dpr: 1,
+    scale: 1,
+    texSize: 384,
   };
   TEX.setTextureSize(quality.texSize);
 
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.dpr));
+  renderer.setPixelRatio(1);
   renderer.setSize(window.innerWidth, window.innerHeight, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = def.exposure ?? 1;
-  renderer.shadowMap.enabled = quality.shadows;
+  renderer.shadowMap.enabled = false;
   renderer.shadowMap.type = THREE.PCFShadowMap;
 
   const scene = new THREE.Scene();
@@ -162,34 +123,9 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   await ctx.tick(0.04, 'init');
   beginFxScene(quality);
   await def.build(ctx);
+  ctx.kit.capLights();
+  ctx.kit.collectFar(scene);
   await ctx.tick(0.9, 'compile');
-
-  // ---------- post processing ----------
-  const size = new THREE.Vector2();
-  renderer.getDrawingBufferSize(size);
-  const rtParams = { samples: 0 };
-  if (quality.bloom) rtParams.type = THREE.HalfFloatType;
-  const rtTarget = new THREE.WebGLRenderTarget(size.x, size.y, rtParams);
-  const composer = new EffectComposer(renderer, rtTarget);
-  composer.addPass(new RenderPass(scene, camera));
-  const b = def.bloom || { strength: 0.35, radius: 0.5, threshold: 0.9 };
-  const bloom = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    (b.strength ?? 0.35) * 0.72,
-    b.radius,
-    Math.max(b.threshold ?? 0.9, 0.9),
-  );
-  bloom.enabled = quality.bloom;
-  composer.addPass(bloom);
-  composer.addPass(new OutputPass());
-  const grade = new ShaderPass(GradeShader);
-  if (def.grade) {
-    if (def.grade.vignette !== undefined) grade.uniforms.vignette.value = def.grade.vignette;
-    if (def.grade.warmth) grade.uniforms.warmth.value.set(...def.grade.warmth);
-    if (def.grade.saturation !== undefined) grade.uniforms.saturation.value = def.grade.saturation;
-    if (def.grade.contrast !== undefined) grade.uniforms.contrast.value = def.grade.contrast;
-  }
-  composer.addPass(grade);
 
   try {
     await renderer.compileAsync(scene, camera);
@@ -217,54 +153,77 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
   let lastT = t0;
   let slow = 0;
   let bob = 0;
+  let frames = 0;
+  let worst = 0;
+  let locked = false;
+  let rafOn = false;
+  let shadowOn = false;
 
-  function applyQuality() {
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.dpr));
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
-    composer.setPixelRatio(Math.min(window.devicePixelRatio, quality.dpr));
-    composer.setSize(window.innerWidth, window.innerHeight);
-    bloom.enabled = quality.bloom;
-    renderer.shadowMap.enabled = quality.shadows;
-    ctx.lights.forEach(({ light }) => {
-      if (light.castShadow && !quality.shadows) light.castShadow = false;
-    });
-    reflectors.forEach((r) => (r.visible = quality.reflections || !r.userData.optional));
+  function syncShadowMaterials() {
     scene.traverse((o) => {
-      if (o.material) {
-        const arr = Array.isArray(o.material) ? o.material : [o.material];
-        arr.forEach((m) => (m.needsUpdate = true));
-      }
+      if (!o.material) return;
+      const arr = Array.isArray(o.material) ? o.material : [o.material];
+      for (let i = 0; i < arr.length; i++) arr[i].needsUpdate = true;
     });
   }
-  applyQuality();
 
-  function degrade() {
-    if (quality.tier <= 0) return;
-    quality.tier -= 1;
-    quality.dpr = [1, 1.15, 1.35][quality.tier];
-    quality.bloom = quality.tier >= 2;
-    quality.shadows = quality.tier >= 1;
-    quality.reflections = quality.tier >= 2;
-    applyQuality();
+  function applyBuffer() {
+    const cssW = window.innerWidth;
+    const cssH = window.innerHeight;
+    const cap = 1600 * quality.scale;
+    const dpr = Math.min(quality.dpr, cap / Math.max(cssW, 1));
+    renderer.setPixelRatio(Math.max(0.5, dpr));
+    renderer.setSize(cssW, cssH, false);
+    const want = quality.shadows && !!ctx.shadowLight;
+    renderer.shadowMap.enabled = want;
+    if (ctx.shadowLight) ctx.shadowLight.castShadow = want;
+    if (want !== shadowOn) {
+      shadowOn = want;
+      syncShadowMaterials();
+    }
+    camera.aspect = cssW / Math.max(cssH, 1);
+    camera.fov = (def.fov ?? 56) * (cssW < 800 ? 1.25 : 1);
+    camera.updateProjectionMatrix();
+  }
+  applyBuffer();
+
+  function dropQuality() {
+    locked = true;
+    if (quality.shadows) {
+      quality.shadows = false;
+      applyBuffer();
+      return;
+    }
+    if (quality.scale > 0.75) {
+      quality.scale = 0.75;
+      applyBuffer();
+    }
   }
 
   function frame() {
-    animId = requestAnimationFrame(frame);
-    if (!running || !visible) return;
+    if (!running || !visible) {
+      rafOn = false;
+      return;
+    }
     const now = performance.now();
     const dt = Math.min((now - lastT) / 1000, 0.1);
     lastT = now;
     const t = (now - t0) / 1000;
 
-    // adaptive quality
-    if (dt > 0.034) slow++;
-    else slow = Math.max(0, slow - 2);
-    if (slow > 20) {
+    frames += 1;
+    if (frames <= 45) worst = Math.max(worst, dt * 1000);
+    if (frames === 45 && !locked && worst < 12 && ctx.shadowLight) {
+      quality.shadows = true;
+      applyBuffer();
+    }
+    if (dt > 0.016) slow += 1;
+    else slow = Math.max(0, slow - 1);
+    if (slow >= 20) {
       slow = 0;
-      degrade();
+      if (!locked) dropQuality();
     }
 
-    current += (target - current) * (1 - Math.exp(-dt / 0.09));
+    current += (target - current) * (1 - Math.exp(-dt / 0.055));
     mouse.sx += (mouse.x - mouse.sx) * (1 - Math.pow(0.02, dt));
     mouse.sy += (mouse.y - mouse.sy) * (1 - Math.pow(0.02, dt));
 
@@ -309,25 +268,44 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
     for (let i = 0; i < ticks.length; i++) ticks[i](t, dt);
     def.update && def.update(t, dt, k, ctx);
     for (let i = 0; i < ctx.updaters.length; i++) ctx.updaters[i](t, dt, k);
+    ctx.kit.updateVisibility(k);
 
-    grade.uniforms.time.value = t % 100;
-    composer.render(dt);
+    renderer.render(scene, camera);
     onFrame({ progress: k, camera });
+
+    const idle =
+      Math.abs(target - current) < 0.0004 &&
+      Math.abs(mouse.x - mouse.sx) < 0.004 &&
+      Math.abs(mouse.y - mouse.sy) < 0.004;
+    if (idle) {
+      rafOn = false;
+      return;
+    }
+    animId = requestAnimationFrame(frame);
   }
-  frame();
+  function wake() {
+    if (!running || !visible || rafOn) return;
+    rafOn = true;
+    lastT = performance.now();
+    animId = requestAnimationFrame(frame);
+  }
+  wake();
 
   const tmpV = new THREE.Vector3();
   return {
     quality,
     setProgress(p) {
       target = clamp(p, 0, 1);
+      wake();
     },
     jump(p) {
       target = current = clamp(p, 0, 1);
+      wake();
     },
     setPointer(x, y) {
       mouse.x = x;
       mouse.y = y;
+      wake();
     },
     project(arr) {
       tmpV.set(arr[0], arr[1], arr[2]).project(camera);
@@ -340,26 +318,18 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
     setVisible(v) {
       if (visible === v) return;
       visible = v;
-      if (v) {
-        lastT = performance.now();
-        if (running) {
-          try {
-            composer.render(0.016);
-          } catch (e) {}
-        }
+      if (v) wake();
+      else {
+        cancelAnimationFrame(animId);
+        rafOn = false;
       }
     },
     resize() {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      renderer.setSize(w, h, false);
-      composer.setSize(w, h);
-      camera.aspect = w / h;
-      camera.fov = (def.fov ?? 56) * (w < 800 ? 1.25 : 1);
-      camera.updateProjectionMatrix();
+      applyBuffer();
     },
     dispose() {
       running = false;
+      rafOn = false;
       cancelAnimationFrame(animId);
       reflectors.forEach((r) => r.dispose && r.dispose());
       scene.traverse((o) => {
@@ -367,7 +337,6 @@ export async function createEngine({ canvas, def, onLoadProgress = () => {}, onF
         if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
       });
       disposables.forEach((d) => d.dispose && d.dispose());
-      composer.dispose();
       pmrem.dispose();
       renderer.dispose();
       renderer.forceContextLoss && renderer.forceContextLoss();

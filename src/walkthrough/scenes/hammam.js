@@ -340,6 +340,7 @@ export default {
       kit.point(lx, 0.6, lz, 0xff9933, 10, 8, 2.0, { flicker: 0.12 });
     }
 
+    kit.beginZone([0.35, 1]);
     // 6. Volumetric Warm Steam Particles (Softly drifting & rising)
     const steam = createParticles({
       count: 220,
@@ -353,13 +354,14 @@ export default {
       rise: 0.035,
     });
     add(steam);
+    kit.endZone();
 
     await tick(0.92, 'lighting');
 
     // 7. Lighting Balance
     // Sunlight shaft main spotlight piercing from Oculus
     kit.spot(0, H + domeRadius * 0.65, 0, 0, 0, 0, 0xfff0d0, 65, 0.42, 0.75, 25, 1.6, {
-      shadow: quality.shadows,
+      shadow: true,
       shadowMap: 2048,
     });
 

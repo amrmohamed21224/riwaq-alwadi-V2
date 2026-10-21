@@ -162,7 +162,7 @@ export default {
     add(sky);
 
     // Warm Sunset directional fill
-    kit.sun(35, 25, -45, 0xff9955, 0.85, { shadow: quality.shadows, size: 45, shadowMap: 2048 });
+    kit.sun(35, 25, -45, 0xff9955, 0.85, { shadow: true, size: 45, shadowMap: 2048 });
 
     // Surrounding Desert Ground
     kit.plane(800, 800, 0, -0.6, 0, mGround, { tile: 8 });
@@ -202,6 +202,7 @@ export default {
 
     await tick(0.55, 'infinity pool & sunken hearth');
 
+    kit.beginZone([0, 0.72]);
     // 4. Giant Infinity Pool (28m x 20m)
     const pool = createWater({
       w: 28,
@@ -249,9 +250,11 @@ export default {
     const fire = createFlame({ width: 1.6, height: 0.7, planes: 4, freq: 5, power: 3.4 });
     fire.position.set(0, -loungeDepth + 0.58, 3.5);
     add(fire);
+    kit.endZone();
 
     await tick(0.75, 'majlis & palms');
 
+    kit.beginZone([0.48, 1]);
     // 6. Contemporary Najdi Majlis Interior
     // Fluted timber walls and bronze triangular mashrabiya panels
     kit.box(0.2, 5.5, 18, -4.5, 2.75, -12, mNajdi);
@@ -264,7 +267,9 @@ export default {
 
     // Center brass tea & dallah table
     kit.rbox(2.8, 0.42, 1.6, 0.05, 0, 0.21, -11, mBrass);
+    kit.endZone();
 
+    kit.beginZone([[0, 0.45], [0.7, 1]]);
     // 7. Lush Diriyah Date Palm Groves flanking the pool
     for (let i = 0; i < 5; i++) {
       kit.palm({ x: -16 - (i % 2) * 3, z: 2 + i * 6, h: 9.0 + (i % 3) * 1.5, lean: 0.28, seed: 15 + i, scale: 1.15 });
@@ -278,6 +283,7 @@ export default {
       kit.agave({ x: -13, z: 4 + i * 5, s: 1.1, seed: i * 3 });
       kit.agave({ x: 14, z: 4 + i * 5, s: 1.1, seed: i * 5 });
     }
+    kit.endZone();
 
     // Warm dusk particles
     const duskMotes = createParticles({

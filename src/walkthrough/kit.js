@@ -12,8 +12,30 @@ export function createKit(ctx) {
   const scene = ctx.scene;
   const disposables = ctx.disposables || [];
   if (!ctx.lights) ctx.lights = [];
-  if (!ctx.quality) ctx.quality = { shadows: true };
+  if (!ctx.quality) ctx.quality = { shadows: false };
   if (!ctx.registerFx) ctx.registerFx = () => {};
+  const zones = [];
+  const farMeshes = [];
+  let host = scene;
+  function zoneVisible(spec, k) {
+    const ranges = Array.isArray(spec[0]) ? spec : [spec];
+    for (let i = 0; i < ranges.length; i++) {
+      const [a, b] = ranges[i];
+      if (k >= a - 0.12 && k <= b + 0.12) return true;
+    }
+    return false;
+  }
+  function beginZone(range) {
+    const g = new THREE.Group();
+    g.userData.zone = range;
+    scene.add(g);
+    zones.push(g);
+    host = g;
+    return g;
+  }
+  function endZone() {
+    host = scene;
+  }
   const track = (o) => {
     disposables.push(o);
     return o;
@@ -110,7 +132,7 @@ export function createKit(ctx) {
     if (o.ry) m.rotation.y = o.ry;
     m.castShadow = o.cast !== false;
     m.receiveShadow = o.receive !== false;
-    (o.parent || scene).add(m);
+    (o.parent || host).add(m);
     return m;
   }
 
@@ -124,14 +146,14 @@ export function createKit(ctx) {
   }
 
   function cyl(rt, rb, h, x, y, z, m, o = {}) {
-    const g = track(new THREE.CylinderGeometry(rt, rb, h, o.seg || 40, 1, !!o.open));
+    const g = track(new THREE.CylinderGeometry(rt, rb, h, o.seg || 16, 1, !!o.open));
     const tile = o.tile || 1;
     scaleUV(g, (Math.PI * 2 * Math.max(rt, rb)) / tile, h / tile);
     return place(new THREE.Mesh(g, m), x, y, z, o);
   }
 
   function sphere(r, x, y, z, m, o = {}) {
-    const g = track(new THREE.SphereGeometry(r, o.seg || 32, o.seg ? o.seg / 2 : 20));
+    const g = track(new THREE.SphereGeometry(r, o.seg || 16, o.seg ? Math.max(8, o.seg / 2) : 12));
     return place(new THREE.Mesh(g, m), x, y, z, o);
   }
 
@@ -144,18 +166,18 @@ export function createKit(ctx) {
     return mesh;
   }
 
-  function group(x = 0, y = 0, z = 0, parent = scene, ry = 0) {
+  function group(x = 0, y = 0, z = 0, parent, ry = 0) {
     const g = new THREE.Group();
     g.position.set(x, y, z);
     g.rotation.y = ry;
-    parent.add(g);
+    (parent || host).add(g);
     return g;
   }
 
-  function add(obj, x, y, z, parent = scene) {
+  function add(obj, x, y, z, parent) {
     if (!obj) return obj;
     if (x !== undefined && y !== undefined && z !== undefined) obj.position.set(x, y, z);
-    const target = parent || scene;
+    const target = parent || host;
     if (obj.parent !== target) target.add(obj);
     ctx.registerFx(obj);
     return obj;
@@ -187,8 +209,7 @@ export function createKit(ctx) {
     scene.add(l);
     scene.add(l.target);
     ctx.lights.push({ light: l, base: intensity });
-    if (o.shadow && ctx.quality.shadows) {
-      l.castShadow = true;
+    if (o.shadow) {
       const s = o.size || 30;
       l.shadow.camera.left = -s;
       l.shadow.camera.right = s;
@@ -200,6 +221,8 @@ export function createKit(ctx) {
       l.shadow.bias = -0.0005;
       l.shadow.normalBias = 0.04;
       l.shadow.radius = 2;
+      l.castShadow = false;
+      if (!ctx.shadowLight) ctx.shadowLight = l;
     }
     return l;
   }
@@ -244,7 +267,7 @@ export function createKit(ctx) {
   }
 
   /** Fluted column (shaft extruded from scalloped section) + base + capital */
-  function flutedColumn({ r = 0.32, h = 4, x = 0, z = 0, y = 0, flutes = 20, shaft, trim, parent = scene, capital = true }) {
+  function flutedColumn({ r = 0.32, h = 4, x = 0, z = 0, y = 0, flutes = 20, shaft, trim, parent, capital = true }) {
     const g = group(x, y, z, parent);
     const shape = new THREE.Shape();
     const N = flutes * 6;
@@ -277,7 +300,7 @@ export function createKit(ctx) {
   }
 
   /* ---------------- furniture ---------------- */
-  function cushionSofa({ x, z, ry = 0, len = 3, depth = 1.0, fabric, legs, seatH = 0.42, arms = true, modules = 3, parent = scene }) {
+  function cushionSofa({ x, z, ry = 0, len = 3, depth = 1.0, fabric, legs, seatH = 0.42, arms = true, modules = 3, parent }) {
     const g = group(x, 0, z, parent, ry);
     rbox(len, 0.18, depth, 0.05, 0, 0.21, 0, legs, { parent: g });
     rbox(len - 0.1, 0.1, depth - 0.1, 0.02, 0, 0.14, 0, fabric, { parent: g });
@@ -296,7 +319,7 @@ export function createKit(ctx) {
     return g;
   }
 
-  function armchair({ x, z, ry = 0, fabric, legs, parent = scene, scale = 1 }) {
+  function armchair({ x, z, ry = 0, fabric, legs, parent, scale = 1 }) {
     const g = group(x, 0, z, parent, ry);
     g.scale.setScalar(scale);
     rbox(0.78, 0.16, 0.76, 0.05, 0, 0.26, 0, legs, { parent: g });
@@ -308,14 +331,14 @@ export function createKit(ctx) {
     return g;
   }
 
-  function roundTable({ x, z, r = 0.55, h = 0.38, top, base, parent = scene }) {
+  function roundTable({ x, z, r = 0.55, h = 0.38, top, base, parent }) {
     const g = group(x, 0, z, parent);
     cyl(r, r, 0.035, 0, h, 0, top, { parent: g, seg: 48 });
     cyl(r * 0.5, r * 0.55, h - 0.04, 0, (h - 0.04) / 2, 0, base, { parent: g, seg: 40 });
     return g;
   }
 
-  function diningChair({ x, z, ry = 0, fabric, frame, parent = scene }) {
+  function diningChair({ x, z, ry = 0, fabric, frame, parent }) {
     const g = group(x, 0, z, parent, ry);
     rbox(0.46, 0.06, 0.46, 0.02, 0, 0.46, 0, fabric, { parent: g });
     rbox(0.46, 0.5, 0.05, 0.03, 0, 0.72, -0.21, fabric, { parent: g, rot: [-0.08, 0, 0] });
@@ -323,7 +346,7 @@ export function createKit(ctx) {
     return g;
   }
 
-  function bookStack({ x, y, z, parent = scene, colors = [0x8b3a2a, 0x2a3b4a, 0xd9c7a0, 0x1c1c1c], ry = 0 }) {
+  function bookStack({ x, y, z, parent, colors = [0x8b3a2a, 0x2a3b4a, 0xd9c7a0, 0x1c1c1c], ry = 0 }) {
     const g = group(x, y, z, parent, ry);
     let h = 0;
     colors.forEach((c, i) => {
@@ -335,7 +358,7 @@ export function createKit(ctx) {
     return g;
   }
 
-  function vase({ x, y, z, h = 0.3, r = 0.08, m, parent = scene, branches = false }) {
+  function vase({ x, y, z, h = 0.3, r = 0.08, m, parent, branches = false }) {
     const pts = [];
     for (let i = 0; i <= 14; i++) {
       const t = i / 14;
@@ -356,7 +379,7 @@ export function createKit(ctx) {
     return v;
   }
 
-  function artFrame({ w, h, x, y, z, ry = 0, texture, color = 0x1a1a1a, frame, parent = scene, emissive = 0, plaque = true }) {
+  function artFrame({ w, h, x, y, z, ry = 0, texture, color = 0x1a1a1a, frame, parent, emissive = 0, plaque = true }) {
     const g = group(x, y, z, parent, ry);
     // Shadow box backing panel
     box(w + 0.16, h + 0.16, 0.05, 0, 0, 0, frame, { parent: g });
@@ -387,7 +410,7 @@ export function createKit(ctx) {
   }
 
   /** soft sheer curtain with folds */
-  function curtain({ w, h, x, y, z, ry = 0, m, folds = 12, depth = 0.08, parent = scene }) {
+  function curtain({ w, h, x, y, z, ry = 0, m, folds = 12, depth = 0.08, parent }) {
     const g = track(new THREE.PlaneGeometry(w, h, folds * 6, 1));
     const p = g.attributes.position;
     for (let i = 0; i < p.count; i++) {
@@ -401,7 +424,7 @@ export function createKit(ctx) {
   }
 
   /* ---------------- vegetation ---------------- */
-  function palm({ x, z, h = 7, lean = 0.3, parent = scene, seed = 1, scale = 1, trunkTex = true }) {
+  function palm({ x, z, h = 7, lean = 0.3, parent, seed = 1, scale = 1, trunkTex = true }) {
     const g = group(x, 0, z, parent, seed * 2.1);
     const dir = new THREE.Vector3(Math.cos(seed) * lean, 0, Math.sin(seed) * lean);
     const curve = new THREE.CatmullRomCurve3([
@@ -455,7 +478,7 @@ export function createKit(ctx) {
     return g;
   }
 
-  function olive({ x, z, h = 2.4, parent = scene, seed = 2, potMat }) {
+  function olive({ x, z, h = 2.4, parent, seed = 2, potMat }) {
     const g = group(x, 0, z, parent, seed);
     const pot = track(new THREE.CylinderGeometry(0.45, 0.34, 0.6, 28));
     place(new THREE.Mesh(pot, potMat), 0, 0.3, 0, { parent: g });
@@ -480,7 +503,7 @@ export function createKit(ctx) {
     return g;
   }
 
-  function agave({ x, z, s = 1, parent = scene, seed = 1 }) {
+  function agave({ x, z, s = 1, parent, seed = 1 }) {
     const g = group(x, 0, z, parent, seed);
     const m = mat(null, { color: 0x6f8c6a, roughness: 0.7 });
     const cg = track(new THREE.ConeGeometry(0.1, 1, 6));
@@ -507,8 +530,52 @@ export function createKit(ctx) {
     const m = createContactShadow({ w, d, opacity });
     m.position.set(x, y, z);
     m.rotation.z = ry;
-    scene.add(m);
+    host.add(m);
     return m;
+  }
+
+  function capLights() {
+    const dirs = [];
+    const locals = [];
+    for (let i = 0; i < ctx.lights.length; i++) {
+      const entry = ctx.lights[i];
+      if (entry.light.isDirectionalLight) dirs.push(entry);
+      else if (entry.light.isPointLight || entry.light.isSpotLight) locals.push(entry);
+    }
+    dirs.forEach((entry, i) => {
+      entry.light.visible = i === 0;
+      if (entry.light.target) entry.light.target.visible = i === 0;
+    });
+    locals.sort((a, b) => b.base - a.base);
+    locals.forEach((entry, i) => {
+      const on = i < 4;
+      entry.light.visible = on;
+      if (entry.light.target) entry.light.target.visible = on;
+    });
+  }
+
+  const farProbe = new THREE.Vector3();
+  function hasZone(obj) {
+    let node = obj;
+    while (node) {
+      if (node.userData && node.userData.zone) return true;
+      node = node.parent;
+    }
+    return false;
+  }
+  function collectFar(root) {
+    root.traverse((obj) => {
+      if (!obj.isMesh || obj.userData.followCamera || hasZone(obj)) return;
+      obj.getWorldPosition(farProbe);
+      if (Math.hypot(farProbe.x, farProbe.z) > 55) farMeshes.push(obj);
+    });
+  }
+  function updateVisibility(k) {
+    for (let i = 0; i < zones.length; i++) {
+      zones[i].visible = zoneVisible(zones[i].userData.zone, k);
+    }
+    const farOn = k < 0.42 || k > 0.9;
+    for (let i = 0; i < farMeshes.length; i++) farMeshes[i].visible = farOn;
   }
 
   return {
@@ -544,5 +611,10 @@ export function createKit(ctx) {
     scaleUV,
     track,
     place,
+    beginZone,
+    endZone,
+    capLights,
+    collectFar,
+    updateVisibility,
   };
 }

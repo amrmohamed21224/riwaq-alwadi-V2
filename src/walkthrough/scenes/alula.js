@@ -165,9 +165,10 @@ export default {
     add(sky);
 
     // Starlight / Moon directional illumination
-    kit.sun(-40, 60, 45, 0x90a8ff, 0.75, { shadow: quality.shadows, size: 50, shadowMap: 2048 });
+    kit.sun(-40, 60, 45, 0x90a8ff, 0.75, { shadow: true, size: 50, shadowMap: 2048 });
 
     // 3. Colossal Red Sandstone Monoliths flanking the Valley
+    kit.beginZone([[0, 0.42], [0.78, 1]]);
     // Left massive mountain wall
     for (let i = 0; i < 7; i++) {
       const z = -25 + i * 9;
@@ -192,6 +193,7 @@ export default {
 
     // Rear mountain canyon closure
     kit.box(64, 45, 24, 0, 20, -38, mSandstone, { rot: [0.05, 0, 0], tile: 5 });
+    kit.endZone();
 
     // Ground plane
     kit.plane(800, 800, 0, -0.5, 0, mGround, { tile: 8 });
@@ -225,6 +227,7 @@ export default {
     }
     kit.box(32, 0.06, 0.14, 0, 4.18, 9.5, mBrass);
 
+    kit.beginZone([0, 0.62]);
     // 5. Expansive Obsidian Reflecting Pool
     const mirrorPool = createWater({
       w: 22,
@@ -243,9 +246,11 @@ export default {
       kit.rbox(3.4, 0.08, 1.4, 0.03, 0, 0.04, 13.5 - i * 1.6, mBasaltDeck, { tile: 1 });
       kit.box(3.42, 0.02, 0.04, 0, 0.02, 13.5 - i * 1.6 - 0.7, mWarmCove);
     }
+    kit.endZone();
 
     await tick(0.75, 'interior suite');
 
+    kit.beginZone([0.4, 0.92]);
     // 6. Royal Suite Interior (Living rock back wall + linear flame)
     // Mountain rock protruding into the interior
     kit.box(26, 4.2, 4.5, 0, 2.1, -12, mSandstone, { rot: [0.04, 0, 0], tile: 2 });
@@ -266,9 +271,11 @@ export default {
 
     // Low solid walnut coffee slab
     kit.rbox(2.8, 0.1, 1.3, 0.04, 0, 0.38, -2.5, mWood);
-    kit.bookStack({ x: 0.6, y: 0.44, z: -2.4, parent: ctx.scene });
+    kit.bookStack({ x: 0.6, y: 0.44, z: -2.4 });
     kit.vase({ x: -0.6, y: 0.44, z: -2.6, h: 0.35, r: 0.08, m: mBrass, branches: true });
+    kit.endZone();
 
+    kit.beginZone([[0, 0.4], [0.72, 1]]);
     // 7. Desert Landscaping & Astronomy Platform
     // Sunken daybeds on pool terrace
     for (const sx of [-11, 11]) {
@@ -282,6 +289,7 @@ export default {
     kit.palm({ x: 20, z: 14, h: 7.8, lean: -0.22, seed: 11, scale: 1.0 });
     kit.agave({ x: -14, z: 8, s: 1.3, seed: 7 });
     kit.agave({ x: 15, z: 10, s: 1.1, seed: 8 });
+    kit.endZone();
 
     // Starlight dust motes in the quiet desert night
     const stardust = createParticles({

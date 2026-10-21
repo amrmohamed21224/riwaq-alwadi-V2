@@ -173,11 +173,12 @@ export default {
     add(sky);
 
     // Moonlight
-    kit.sun(-35, 55, 30, 0xa0b8ff, 0.85, { shadow: quality.shadows, size: 45, shadowMap: 2048 });
+    kit.sun(-35, 55, 30, 0xa0b8ff, 0.85, { shadow: true, size: 45, shadowMap: 2048 });
 
     // 3. Ground & Surrounding Desert Cliffs
     kit.plane(800, 800, 0, -0.6, 0, kit.mat(null, { color: 0x0a0c10, roughness: 1 }));
     // Cliff rock massings (steep stepped plateaus flanking the villa)
+    kit.beginZone([[0, 0.38], [0.88, 1]]);
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * Math.PI * 1.4 - 0.7;
       const r = 85 + (i % 3) * 20;
@@ -186,6 +187,7 @@ export default {
         tile: 3,
       });
     }
+    kit.endZone();
 
     // 4. Main Architectural Volumes
     // Ground floor slab (Marble inside)
@@ -222,6 +224,7 @@ export default {
 
     await tick(0.50, 'pool & fire');
 
+    kit.beginZone([0, 0.55]);
     // 5. Planar Infinity Pool & Stepping Stones
     kit.box(18.4, 0.5, 13.4, 0, -0.25, 20.5, mBasalt, { tile: 2 });
     const pool = createWater({
@@ -255,7 +258,9 @@ export default {
     // Landscaping flanking pool
     kit.olive({ x: -12, z: 18.5, h: 2.8, potMat: mBasalt, seed: 1 });
     kit.olive({ x: 12, z: 21.5, h: 2.6, potMat: mBasalt, seed: 3 });
+    kit.endZone();
 
+    kit.beginZone([0.32, 0.78]);
     // 6. Great Hall Interior
     // Fluted acoustic walnut slats back wall
     const slatGeo = kit.track(new THREE.BoxGeometry(0.12, 4.0, 0.18));
@@ -267,7 +272,7 @@ export default {
       slats.setMatrixAt(i, dummy.matrix);
     }
     slats.castShadow = true;
-    ctx.scene.add(slats);
+    add(slats);
 
     // Monolithic Nero Marquina fireplace block
     kit.box(9.6, 3.8, 0.7, 0, 1.9, -10.5, mFloor, { tile: 2 });
@@ -288,14 +293,16 @@ export default {
     // Sculptural brass & dark walnut coffee table
     kit.rbox(2.6, 0.08, 1.4, 0.04, 3.2, 0.44, -4.6, mBrass);
     kit.rbox(2.4, 0.36, 1.2, 0.04, 3.2, 0.18, -4.6, mWood);
-    kit.bookStack({ x: 3.6, y: 0.48, z: -4.4, parent: ctx.scene });
+    kit.bookStack({ x: 3.6, y: 0.48, z: -4.4 });
     kit.vase({ x: 2.6, y: 0.48, z: -4.8, h: 0.38, r: 0.1, m: mBrass, branches: true });
 
     // Architectural rug
     kit.rbox(11.5, 0.02, 9.5, 0.08, 1.5, 0.01, -6, kit.mat(fabricTex, { color: 0x1f1d1b, roughness: 1 }));
+    kit.endZone();
 
     await tick(0.72, 'gallery & dining');
 
+    kit.beginZone([0.5, 0.88]);
     // 7. Architectural Blueprint Gallery (Left Wing)
     kit.box(0.18, 4.0, 24, -16.5, 2.0, -9.5, mStone, { tile: 2 });
     const artLoader = new THREE.TextureLoader();
@@ -317,9 +324,11 @@ export default {
       const mMaq = new THREE.Mesh(geom, mBrass);
       mMaq.position.set(-13.2, 1.45, z);
       mMaq.rotation.set(0.4, 0.8, 0.2);
-      ctx.scene.add(mMaq);
+      add(mMaq);
     }
+    kit.endZone();
 
+    kit.beginZone([0.72, 1]);
     // 8. Suspended Cliff Terrace & Sunken Fire Lounge
     const fireBase = kit.cyl(1.1, 1.25, 0.5, 22.5, 0.25, -2, mTerrace, { seg: 28 });
     const terraceFlame = createFlame({ width: 1.8, height: 0.75, planes: 4, freq: 4, power: 3.2 });
@@ -334,11 +343,14 @@ export default {
       });
     }
 
+    kit.endZone();
+    kit.beginZone([[0, 0.35], [0.72, 1]]);
     // Landscaping: Palms & desert agaves along terrace edge
     kit.palm({ x: 28, z: 8, h: 8.5, lean: 0.35, seed: 1, scale: 1.1 });
     kit.palm({ x: 30, z: -12, h: 7.5, lean: -0.28, seed: 4, scale: 0.95 });
     kit.agave({ x: 19, z: 8, s: 1.2, seed: 2 });
     kit.agave({ x: 26, z: 12, s: 0.9, seed: 3 });
+    kit.endZone();
 
     // Atmospheric warm dust particles in Great Hall
     const dust = createParticles({ count: 180, box: [16, 5, 16], center: [0, 2.5, -6], color: 0xffd290, opacity: 0.45 });

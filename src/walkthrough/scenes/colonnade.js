@@ -161,7 +161,7 @@ export default {
     add(sky);
 
     // Warm Directional Sunlight penetrating between columns
-    kit.sun(35, 40, -25, 0xffaa66, 0.8, { shadow: quality.shadows, size: 50, shadowMap: 2048 });
+    kit.sun(35, 40, -25, 0xffaa66, 0.8, { shadow: true, size: 50, shadowMap: 2048 });
 
     // 3. Colonnade Gallery Floor & Ceiling
     const galleryL = 72; // Length of the colonnade gallery
@@ -308,12 +308,14 @@ export default {
     const fountainBowl = kit.cyl(1.4, 1.1, 0.7, 0, 0.35, endZ + 1.8, mCarrara, { seg: 28 });
     kit.cyl(1.3, 1.3, 0.04, 0, 0.68, endZ + 1.8, mFloorGlow, { seg: 28 });
 
+    kit.beginZone([[0, 0.3], [0.72, 1]]);
     // 7. Lush Courtyard Landscaping flanking the colonnade
     for (let i = 0; i < 6; i++) {
       const z = 22 - i * 9.5;
       kit.palm({ x: -galleryW / 2 - 4.5, z, h: 8.5 + (i % 2) * 1.5, lean: 0.22, seed: 20 + i, scale: 1.05 });
       kit.palm({ x: galleryW / 2 + 4.5, z, h: 8.0 + (i % 3) * 1.2, lean: -0.25, seed: 40 + i, scale: 1.0 });
     }
+    kit.endZone();
 
     // Atmospheric warm floating particles
     const motes = createParticles({

@@ -223,6 +223,7 @@ export default {
 
     await tick(0.72, 'floating staircase & mezzanine');
 
+    kit.beginZone([0.28, 1]);
     // 6. Floating Illuminated Cantilevered Timber Staircase
     const stairX = W / 2 - 2.5;
     const stairZ = -D / 2 + 4.5;
@@ -246,7 +247,7 @@ export default {
     const balustradeMesh = new THREE.Mesh(balustradeGeo, mBalustrade);
     balustradeMesh.position.set(stairX - stepW / 2, (steps * stepH) / 2 + 0.4, stairZ + (steps * stepD * 0.85) / 2);
     balustradeMesh.rotation.set(-Math.atan2(steps * stepH, steps * stepD * 0.85), Math.PI / 2, 0);
-    ctx.scene.add(balustradeMesh);
+    add(balustradeMesh);
     // Brass top cap rail
     kit.cyl(0.025, 0.025, steps * stepD * 1.1, stairX - stepW / 2, steps * stepH + 0.45, stairZ + (steps * stepD * 0.85) / 2, mBrass, {
       rot: [-Math.atan2(steps * stepH, steps * stepD * 0.85), 0, 0],
@@ -258,6 +259,7 @@ export default {
     // Glass railing for the bridge overlooking the salon
     kit.box(W * 0.75, 1.0, 0.04, -1.5, bridgeY + 0.5, -D / 2 + 6.0, mBalustrade);
     kit.box(W * 0.75, 0.04, 0.08, -1.5, bridgeY + 1.0, -D / 2 + 6.0, mBrass);
+    kit.endZone();
 
     // 8. Multi-Tier Geometric Crystal Chandelier (Crown of the volume)
     const chanY = H - 1.8;

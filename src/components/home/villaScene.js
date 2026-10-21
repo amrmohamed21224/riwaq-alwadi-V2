@@ -107,13 +107,12 @@ export const HOTSPOTS = [
 /* ---------- Scene Builder ---------- */
 export function buildVilla(scene, projectTextures, renderer, quality = { shadows: false, tier: 0, reflections: false }) {
   const disposables = [];
+  const kitCtx = { scene, disposables, quality };
+  const kit = createKit(kitCtx);
   const add = (o) => {
-    scene.add(o);
     disposables.push(o);
-    return o;
+    return kit.add(o);
   };
-
-  const kit = createKit({ scene, disposables, quality });
 
   // 1. Procedural PBR Physical Materials
   const marbleTex = tex.marble({ base: 0x0f1115, vein: 0xd6b478, sharp: 14, scale: 3.5, polish: 0.12, tilesX: 2, tilesY: 2 });
@@ -157,12 +156,13 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
   add(sky);
 
   // Cool twilight moonlight casting soft architectural shadows
-  const moonLight = kit.sun(-35, 55, 30, 0x9eb8ff, 0.8, { shadow: !!quality.shadows, size: 45, shadowMap: 1024 });
+  const moonLight = kit.sun(-35, 55, 30, 0x9eb8ff, 0.8, { shadow: true, size: 45, shadowMap: 1024 });
 
   // 3. Desert Ground & Surrounding Wadi Hanifa Canyon Cliffs
   kit.plane(800, 800, 0, -0.6, 0, kit.mat(null, { color: 0x0a0c10, roughness: 1 }));
 
   // Natural stepped limestone cliff formations flanking the entrance
+  kit.beginZone([[0, 0.38], [0.88, 1]]);
   for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 1.4 - 0.7;
     const r = 85 + (i % 3) * 20;
@@ -171,6 +171,7 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
       tile: 3,
     });
   }
+  kit.endZone();
 
   // Natural boulders framing the arrival approach with warm landscape uplights
   for (let i = 0; i < 6; i++) {
@@ -239,6 +240,7 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
   kit.cyl(0.03, 0.03, 2.6, -2.9, 1.85, 0.08, mBrass, { parent: doorPivot, seg: 16 });
   kit.cyl(0.03, 0.03, 2.6, -2.9, 1.85, -0.08, mBrass, { parent: doorPivot, seg: 16 });
 
+  kit.beginZone([0, 0.55]);
   // 6. Suspended Infinity Reflecting Pool & Water Court
   // Pool Basin (sunken -0.45m with dark basalt stone)
   kit.box(18.4, 0.5, 13.4, 0, -0.25, 20.5, mBasalt, { tile: 2 });
@@ -297,6 +299,9 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
     kit.point(9.8, 0.45, bz, 0xffbe72, 3.5, 3.0, 2);
   }
 
+  kit.endZone();
+
+  kit.beginZone([[0, 0.4], [0.72, 1]]);
   // 8. Architectural Landscaping: Olive Trees, Agaves & Desert Flora
   // Monolithic Travertine planter troughs flanking the terrace
   kit.box(1.2, 0.55, 6.5, -12, 0.28, 20, mTravertine);
@@ -313,12 +318,14 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
   kit.agave({ x: 12, z: 17.5, s: 1.1, seed: 4 });
   kit.agave({ x: 18, z: 8, s: 1.3, seed: 5 });
   kit.agave({ x: 25, z: 12, s: 0.9, seed: 6 });
+  kit.endZone();
 
   // Warm landscape uplights washing the olive trees and palms
   kit.spot(-12, 0.2, 17, -12, 2.5, 18.5, 0xffd290, 18, 0.5, 0.5);
   kit.spot(12, 0.2, 23, 12, 2.5, 21.5, 0xffd290, 18, 0.5, 0.5);
   kit.spot(26, 0.2, 8, 28, 6.0, 8, 0xffd290, 24, 0.6, 0.5);
 
+  kit.beginZone([0.32, 0.78]);
   // 9. Great Hall Interior (Monumental Fireplace & Living Suite)
   // Fluted acoustic American walnut feature wall (rear)
   const slatGeo = kit.track(new THREE.BoxGeometry(0.12, 4.0, 0.18));
@@ -388,7 +395,9 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
     kit.cyl(0.005, 0.005, 0.72, hx, 3.61, hz, mBrass, { seg: 6 });
   }
   kit.point(2, 3.15, -6, 0xffca86, 16, 12, 1.8);
+  kit.endZone();
 
+  kit.beginZone([0.5, 0.88]);
   // 10. Curated Architectural Blueprint & Art Gallery (Left Wing)
   // Dedicated gallery feature wall in dark limestone (NO glowing white billboard!)
   kit.box(0.18, 4.0, 24, -16.5, 2.0, -9.5, mStone, { tile: 2 });
@@ -416,7 +425,9 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
     // Pin-spot on maquette
     kit.spot(-13.2, 3.8, z, -13.2, 1.45, z, 0xffe2b8, 16, 0.35, 0.5);
   }
+  kit.endZone();
 
+  kit.beginZone([0.62, 0.92]);
   // 11. Private Dining & Hospitality Suite (Right Wing)
   kit.box(7.2, 0.12, 2.4, 8.8, 0.86, -15, mWood);
   for (const sx of [-3.2, 3.2]) {
@@ -440,7 +451,9 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
   // Sheer wave-fold linen curtains on side glass facades
   const mCurtain = kit.mat(null, { color: 0xe8e4dc, roughness: 0.95, opacity: 0.5, transparent: true, side: THREE.DoubleSide });
   kit.curtain({ w: 8.5, h: 3.9, x: 15.8, y: 1.95, z: -2, ry: Math.PI / 2, m: mCurtain, folds: 16 });
+  kit.endZone();
 
+  kit.beginZone([0.72, 1]);
   // 12. Suspended Cliff Terrace & Sunken Fire Lounge
   const fireBase = kit.cyl(1.1, 1.25, 0.5, 22.5, 0.25, -2, mTerrace, { seg: 28 });
   const terraceFlame = createFlame({ width: 1.8, height: 0.75, planes: 4, freq: 4, power: 3.2 });
@@ -454,6 +467,7 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
       ry: -a + Math.PI / 2,
     });
   }
+  kit.endZone();
 
   // 13. Calibrated Architectural Lighting Setup
   // Exterior ambient fill
@@ -478,7 +492,12 @@ export function buildVilla(scene, projectTextures, renderer, quality = { shadows
   // Pool water subtle ambient bounce
   kit.point(0, 1.5, 20.5, 0x5aa2cc, 16, 18, 1.8);
 
+  kit.capLights();
+  kit.collectFar(scene);
+
   return {
+    kit,
+    shadowLight: kitCtx.shadowLight,
     update(time) {
       // Dynamic water ripples
       if (pool.userData?.tick) pool.userData.tick(time);

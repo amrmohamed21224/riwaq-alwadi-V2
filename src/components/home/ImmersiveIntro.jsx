@@ -1,10 +1,6 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+﻿import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import {
   ArrowUpRight,
   ChevronDown,
@@ -147,18 +143,17 @@ export default function ImmersiveIntro({ lang }) {
     }
 
     const isMobile = window.innerWidth < 800;
-    const introTier = window.innerWidth < 1100 ? 0 : (navigator.hardwareConcurrency || 4) <= 4 ? 1 : 2;
     const introQuality = {
-      tier: introTier,
-      shadows: introTier >= 1,
-      bloom: introTier >= 2,
-      reflections: introTier >= 2,
+      tier: 0,
+      shadows: false,
+      bloom: false,
+      reflections: false,
+      dpr: 1,
+      scale: 1,
     };
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, introTier === 0 ? 1 : 1.25));
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
-    renderer.shadowMap.enabled = introQuality.shadows;
+    renderer.shadowMap.enabled = false;
     renderer.shadowMap.type = THREE.PCFShadowMap;
 
     const scene = new THREE.Scene();
@@ -170,22 +165,6 @@ export default function ImmersiveIntro({ lang }) {
     );
     const rig = createCameraRig();
 
-    // Bloom only on wide, capable screens, and at half resolution
-    let composer = null;
-    if (introQuality.bloom) {
-      composer = new EffectComposer(renderer);
-      composer.addPass(new RenderPass(scene, camera));
-      const bloomPass = new UnrealBloomPass(
-        new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.22,
-        0.4,
-        0.9,
-      );
-      composer.addPass(bloomPass);
-      composer.addPass(new OutputPass());
-    }
-
-    // Textures loader
     let villa = null;
     let disposed = false;
     const loader = new THREE.TextureLoader();
@@ -200,12 +179,46 @@ export default function ImmersiveIntro({ lang }) {
       return tex;
     });
 
-    beginFxScene(introQuality);
-    villa = buildVilla(scene, projectTextures, renderer, introQuality);
+    let shadowOn = false;
+    function applyBuffer() {
+      const cssW = window.innerWidth;
+      const cssH = window.innerHeight;
+      const cap = 1600 * introQuality.scale;
+      const dpr = Math.min(introQuality.dpr, cap / Math.max(cssW, 1));
+      renderer.setPixelRatio(Math.max(0.5, dpr));
+      renderer.setSize(cssW, cssH, false);
+      const light = villa && villa.shadowLight;
+      const want = !!(introQuality.shadows && light);
+      renderer.shadowMap.enabled = want;
+      if (light) light.castShadow = want;
+      if (want !== shadowOn) {
+        shadowOn = want;
+        scene.traverse((o) => {
+          if (!o.material) return;
+          const arr = Array.isArray(o.material) ? o.material : [o.material];
+          for (let i = 0; i < arr.length; i++) arr[i].needsUpdate = true;
+        });
+      }
+      camera.aspect = cssW / Math.max(cssH, 1);
+      camera.fov = cssW < 800 ? 70 : 56;
+      camera.updateProjectionMatrix();
+    }
+    applyBuffer();
+
+    function ensureVilla() {
+      if (villa || disposed) return;
+      beginFxScene(introQuality);
+      villa = buildVilla(scene, projectTextures, renderer, introQuality);
+      wake();
+    }
+    const idleHandle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => ensureVilla(), { timeout: 900 })
+      : window.setTimeout(ensureVilla, 180);
 
     // Scroll & Mouse Tracking
     let targetProgress = 0;
     let currentProgress = 0;
+    let loopReady = false;
     const mouse = { x: 0, y: 0, sx: 0, sy: 0 };
 
     const handleScroll = () => {
@@ -213,6 +226,7 @@ export default function ImmersiveIntro({ lang }) {
       const totalScrollable = rect.height - window.innerHeight;
       if (totalScrollable <= 0) return;
       targetProgress = clamp(-rect.top / totalScrollable, 0, 1);
+      wake();
     };
     handleScroll();
     currentProgress = targetProgress;
@@ -220,14 +234,11 @@ export default function ImmersiveIntro({ lang }) {
     const handlePointerMove = (e) => {
       mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
       mouse.y = (e.clientY / window.innerHeight - 0.5) * 2;
+      wake();
     };
 
     const handleResize = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight, false);
-      if (composer) composer.setSize(window.innerWidth, window.innerHeight);
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.fov = window.innerWidth < 800 ? 70 : 56;
-      camera.updateProjectionMatrix();
+      applyBuffer();
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -256,19 +267,49 @@ export default function ImmersiveIntro({ lang }) {
     let lastChapter = -1;
     const tempScreenPos = new THREE.Vector3();
 
-    const tick = () => {
-      if (!looping) return;
+    let rafOn = false;
+    let frames = 0;
+    let worst = 0;
+    let slow = 0;
+    let locked = false;
+    function wake() {
+      if (!loopReady || !isVisible || walkthroughOpen || rafOn) return;
+      rafOn = true;
+      lastTick = performance.now();
       animId = requestAnimationFrame(tick);
-      if (!isVisible || walkthroughOpen) return;
+    }
+
+    const tick = () => {
+      if (!isVisible || walkthroughOpen) {
+        rafOn = false;
+        return;
+      }
 
       const now = performance.now();
       const dt = Math.min((now - lastTick) / 1000, 0.05);
       lastTick = now;
       const time = (now - startTime) * 0.001;
 
-      currentProgress += (targetProgress - currentProgress) * (1 - Math.exp(-dt / 0.09));
-      mouse.sx += (mouse.x - mouse.sx) * 0.045;
-      mouse.sy += (mouse.y - mouse.sy) * 0.045;
+      if (!villa && targetProgress > 0.02) ensureVilla();
+
+      frames += 1;
+      if (frames <= 45) worst = Math.max(worst, dt * 1000);
+      if (!locked && frames >= 45 && worst < 12 && villa && villa.shadowLight && !introQuality.shadows) {
+        introQuality.shadows = true;
+        applyBuffer();
+      }
+      if (dt > 0.016) slow += 1;
+      else slow = Math.max(0, slow - 1);
+      if (slow >= 20 && !locked) {
+        locked = true;
+        if (introQuality.shadows) introQuality.shadows = false;
+        else if (introQuality.scale > 0.75) introQuality.scale = 0.75;
+        applyBuffer();
+      }
+
+      currentProgress += (targetProgress - currentProgress) * (1 - Math.exp(-dt / 0.055));
+      mouse.sx += (mouse.x - mouse.sx) * (1 - Math.exp(-dt / 0.055));
+      mouse.sy += (mouse.y - mouse.sy) * (1 - Math.exp(-dt / 0.055));
 
       const { position, target: lookTarget } = rig.at(currentProgress);
       camera.position.copy(position);
@@ -283,9 +324,11 @@ export default function ImmersiveIntro({ lang }) {
       tempLookAt.y -= mouse.sy * 0.8;
       camera.lookAt(tempLookAt);
 
-      villa.update(time);
-      if (composer) composer.render();
-      else renderer.render(scene, camera);
+      if (villa) {
+        villa.kit.updateVisibility(currentProgress);
+        villa.update(time);
+        renderer.render(scene, camera);
+      }
 
       const heroFadeProgress = clamp(currentProgress / 0.12, 0, 1);
       const mask = heroMaskRef.current;
@@ -338,25 +381,39 @@ export default function ImmersiveIntro({ lang }) {
         el.style.pointerEvents = 'auto';
         el.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
       });
+
+      const idle =
+        Math.abs(targetProgress - currentProgress) < 0.0004 &&
+        Math.abs(mouse.x - mouse.sx) < 0.004 &&
+        Math.abs(mouse.y - mouse.sy) < 0.004;
+      if (idle) {
+        rafOn = false;
+        return;
+      }
+      animId = requestAnimationFrame(tick);
     };
 
     function syncLoop() {
       const should = isVisible && !walkthroughOpen;
-      if (should && !looping) {
+      if (should) {
         looping = true;
-        lastTick = performance.now();
-        animId = requestAnimationFrame(tick);
-      } else if (!should && looping) {
+        wake();
+      } else if (looping) {
         looping = false;
+        rafOn = false;
         cancelAnimationFrame(animId);
       }
     }
+    loopReady = true;
     syncLoop();
 
     return () => {
       disposed = true;
       looping = false;
+      rafOn = false;
       cancelAnimationFrame(animId);
+      if (window.cancelIdleCallback && typeof idleHandle === 'number') window.cancelIdleCallback(idleHandle);
+      else clearTimeout(idleHandle);
       observer.disconnect();
       classObserver.disconnect();
       window.removeEventListener('scroll', handleScroll);
@@ -364,7 +421,6 @@ export default function ImmersiveIntro({ lang }) {
       window.removeEventListener('resize', handleResize);
       villa && villa.dispose();
       projectTextures.forEach((t) => t.dispose());
-      if (composer) composer.dispose();
       renderer.dispose();
     };
   }, []);
@@ -411,7 +467,7 @@ export default function ImmersiveIntro({ lang }) {
 
               <div className="hero-title-ornament" aria-hidden="true">
                 <span className="ornament-line ornament-line-left" />
-                <span className="ornament-diamond">◆</span>
+                <span className="ornament-diamond">â—†</span>
                 <span className="ornament-line ornament-line-right" />
               </div>
 

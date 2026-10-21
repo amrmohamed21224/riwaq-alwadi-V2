@@ -8,7 +8,7 @@ let reflectBudget = 0;
 /** Called once before a scene is built so water picks the right technique. */
 export function beginFxScene(quality) {
   activeQuality = quality || { tier: 0, reflections: false };
-  reflectBudget = activeQuality.reflections && activeQuality.tier >= 2 ? 1 : 0;
+  reflectBudget = 0;
 }
 
 /* =========================================================================
